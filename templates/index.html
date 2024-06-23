@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Python Coding Environment</title>
+    <style>
+        #editor {
+            width: 800px;
+            height: 400px;
+            border: 1px solid grey;
+        }
+        #controls, #print-output, #return-output {
+            margin-top: 10px;
+        }
+        #print-output, #return-output {
+            width: 800px;
+            height: 100px;
+            border: 1px solid grey;
+            padding: 10px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div id="editor"></div>
+    <div id="controls">
+        <button id="run-btn">Run Python Code</button>
+    </div>
+    <div id="print-output"></div>
+    <div id="return-output"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs/loader.min.js"></script>
+    <script>
+        require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs' }});
+        require(["vs/editor/editor.main"], function() {
+            var editor = monaco.editor.create(document.getElementById('editor'), {
+                value: "def solution(n):\n    print(f'Processing {n}')\n    return n * 2\n\nprint('This is a test print')",
+                language: "python",
+                theme: "vs-dark",
+                automaticLayout: true,
+                minimap: { enabled: false },
+                fontSize: 14,
+                tabSize: 4,
+                insertSpaces: true,
+                wordWrap: 'on'
+            });
+
+            document.getElementById('run-btn').addEventListener('click', function() {
+                var code = editor.getValue();
+                var printOutput = document.getElementById('print-output');
+                var returnOutput = document.getElementById('return-output');
+                printOutput.textContent = "Running code...\n";
+                returnOutput.textContent = "";
+
+                fetch('http://localhost:8000/run_code', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ code: code }),
+                })
+                .then(response => response.json())
+                .then(data => {
+                    printOutput.textContent = "Print Output:\n" + (data.print_output || "No print output");
+                    returnOutput.textContent = "Return Output:\n" + (data.return_output || "No return output");
+                    console.log("Print output:", data.print_output);
+                    console.log("Return output:", data.return_output);
+                })
+                .catch((error) => {
+                    printOutput.textContent = "Error: " + error;
+                    console.error('Error:', error);
+                });
+            });
+        });
+    </script>
+</body>
+</html>

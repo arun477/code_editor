@@ -1,0 +1,5 @@
+def solution(n):
+    print(f'Processing {n}')
+    return n * 2
+
+print('This is a test print')
