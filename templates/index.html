@@ -20,6 +20,7 @@
             padding: 10px;
             font-family: monospace;
             white-space: pre-wrap;
+            overflow-y: scroll;
         }
     </style>
 </head>
@@ -32,7 +33,9 @@
     <div id="return-output"></div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs/loader.min.js"></script>
+
     <script>
+        
         // Fetch initial code from backend
         fetch('http://localhost:8000/initial_code')
             .then(response => response.json())
@@ -43,7 +46,9 @@
             .catch(error => console.error('Error fetching initial code:', error));
 
         function createEditor(initialCode) {
+    
             require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs' }});
+            
             require(["vs/editor/editor.main"], function() {
                 var editor = monaco.editor.create(document.getElementById('editor'), {
                     value: initialCode,
@@ -73,9 +78,9 @@
                     })
                     .then(response => response.json())
                     .then(data => {
-                        printOutput.textContent = "Std Output:\n" + (data.print_output || "No Std Output");
+                        printOutput.textContent = "Std Output:\n" + (data.logged_output || "No Std Output");
                         returnOutput.textContent = "Return Output:\n" + (data.return_output || "No return output");
-                        console.log("Std Output:", data.print_output);
+                        console.log("Std Output:", data.logged_output);
                         console.log("Return output:", data.return_output);
                     })
                     .catch((error) => {
