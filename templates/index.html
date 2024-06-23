@@ -1,42 +1,113 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Python Coding Environment</title>
     <style>
+        body {
+
+            overflow-x: hidden;
+            height: 100%;
+
+        }
+
+        #parent {
+            display: flex;
+            flex-wrap: wrap;
+            /* Allow flex items to wrap */
+            width: 100%;
+        }
+
+        #descriptions {
+            width: 37%;
+            /* Initial width for the description box */
+            height: 100%;
+            border: 1px solid grey;
+            padding: 20px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            overflow-y: scroll;
+            overflow-x: hidden;
+            position: fixed;
+            margin-left: 30px;
+        }
+
+        #editor-container {
+            width: 55%;
+            right: 10px;
+            position: fixed;
+            margin-right: 30px;
+
+        }
+
         #editor {
-            width: 800px;
+            width: 100%;
             height: 400px;
             border: 1px solid grey;
         }
-        #controls, #print-output, #return-output {
+
+        #controls,
+        #print-output,
+        #return-output {
             margin-top: 10px;
         }
-        #print-output, #return-output {
-            width: 800px;
+
+        #print-output,
+        #return-output {
+            width: calc(100% - 20px);
+            /* Take full width with 10px padding on each side */
             height: 100px;
             border: 1px solid grey;
             padding: 10px;
             font-family: monospace;
             white-space: pre-wrap;
             overflow-y: scroll;
+            overflow-x: hidden;
+        }
+
+        .valid-output {
+            border-color: green !important;
+            border-width: 3px !important;
+        }
+
+        .invalid-output {
+            border-color: red !important;
+            border-width: 3px !important;
         }
     </style>
 </head>
-<body>
-    <div id="editor"></div>
-    <div id="controls">
-        <button id="run-btn">Run</button>
-    </div>
-    <div id="print-output"></div>
-    <div id="return-output"></div>
 
+<body>
+    <div id="parent">
+        <div id="descriptions"></div>
+        <div id="editor-container">
+            <div id="editor"></div>
+            <div id="controls">
+                <button id="run-btn">Run</button>
+            </div>
+            <div id="print-output"></div>
+            <div id="return-output"></div>
+        </div>
+    </div>
+
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/markdown-it/12.3.2/markdown-it.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs/loader.min.js"></script>
 
     <script>
-        
-        // Fetch initial code from backend
+
+        // fetch problem description
+        fetch('http://localhost:8000/problem_description')
+            .then(response => response.json())
+            .then(data => {
+                // Use fetched initial code
+                addDescription(data.description);
+            })
+            .catch(error => console.error('Error fetching initial code:', error));
+
+        // fetch initial code from backend
         fetch('http://localhost:8000/initial_code')
             .then(response => response.json())
             .then(data => {
@@ -45,11 +116,23 @@
             })
             .catch(error => console.error('Error fetching initial code:', error));
 
+
+        function addDescription(description) {
+            let div = document.getElementById('descriptions')
+
+            const md = window.markdownit();
+            const htmlContent = md.render(description);
+            div.innerHTML = htmlContent;
+
+            // div.innerText = description;
+
+        }
+
         function createEditor(initialCode) {
-    
-            require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs' }});
-            
-            require(["vs/editor/editor.main"], function() {
+
+            require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs' } });
+
+            require(["vs/editor/editor.main"], function () {
                 var editor = monaco.editor.create(document.getElementById('editor'), {
                     value: initialCode,
                     language: "python",
@@ -62,7 +145,7 @@
                     wordWrap: 'on'
                 });
 
-                document.getElementById('run-btn').addEventListener('click', function() {
+                document.getElementById('run-btn').addEventListener('click', function () {
                     var code = editor.getValue();
                     var printOutput = document.getElementById('print-output');
                     var returnOutput = document.getElementById('return-output');
@@ -76,20 +159,32 @@
                         },
                         body: JSON.stringify({ code: code }),
                     })
-                    .then(response => response.json())
-                    .then(data => {
-                        printOutput.textContent = "Std Output:\n" + (data.logged_output || "No Std Output");
-                        returnOutput.textContent = "Return Output:\n" + (data.return_output || "No return output");
-                        console.log("Std Output:", data.logged_output);
-                        console.log("Return output:", data.return_output);
-                    })
-                    .catch((error) => {
-                        printOutput.textContent = "Error: " + error;
-                        console.error('Error:', error);
-                    });
+                        .then(response => response.json())
+                        .then(data => {
+                            printOutput.textContent = "Std Output:\n" + (data.logged_output || "No Std Output");
+                            returnOutput.textContent = "Return Output:\n" + (data.return_output || "No return output");
+                            console.log("Std Output:", data.logged_output);
+                            console.log("Return output:", data.return_output);
+                            if (data.valid) {
+                                printOutput.classList.add("valid-output");
+                                returnOutput.classList.add("valid-output");
+                                printOutput.classList.remove("invalid-output");
+                                returnOutput.classList.remove("invalid-output");
+                            } else {
+                                printOutput.classList.add("invalid-output");
+                                returnOutput.classList.add("invalid-output");
+                                printOutput.classList.remove("valid-output");
+                                returnOutput.classList.remove("valid-output");
+                            }
+                        })
+                        .catch((error) => {
+                            printOutput.textContent = "Error: " + error;
+                            console.error('Error:', error);
+                        });
                 });
             });
         }
     </script>
 </body>
+
 </html>

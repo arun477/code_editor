@@ -32,6 +32,12 @@ app.add_middleware(
 async def read_root(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
+@app.get('/problem_description')
+async def problem_description():
+    with open('./problem_description.md', 'r') as f:
+        description = f.read()
+    return {"description": description}
+
 @app.get('/initial_code')
 async def initial_code():
     with open('./initial_code.py', 'r') as f:
@@ -64,24 +70,29 @@ def run_solution():
                 sig = inspect.signature(problem.solution)
                 if len(sig.parameters) > 0:
                     # If it requires arguments, we'll pass a default value of 2
-                    return_output = problem.solution(2)
-                    print(f"Result of solution(2): {{return_output}}")
+                    input_data = [0,1,0,3,12]
+                    return_output = problem.solution(input_data)
+                    valid = return_output == input_data
+                    print(f"Expected Output: {{input_data}}")
                 else:
                     return_output = problem.solution()
+                    valid = True
                     print(f"Result of solution(): {{return_output}}")
             else:
                 print("No solution method found in Problem class or it's not callable")
+                valid = False
                 return_output = None
         else:
             print("No Problem class found or it's not callable")
             return_output = None
+            valid = False
     
-    return logged_output.getvalue().strip(), return_output
+    return logged_output.getvalue().strip(), return_output, valid
 
 if __name__ == "__main__":
-    logged_output, return_output = run_solution()
+    logged_output, return_output, valid = run_solution()
     print(logged_output)
-    print(json.dumps({{"return_output": return_output}}))
+    print(json.dumps({{"return_output": return_output, "valid": valid}}))
 """
 
 def run_code_locally(code):
@@ -139,13 +150,17 @@ def run_code_in_docker(code):
             output_lines = logs.strip().split('\n')
             
             try:
-                return_output = json.loads(output_lines[-1])['return_output']
+                output = json.loads(output_lines[-1])
+                return_output = output['return_output']
+                valid = output['valid']
                 logged_output = '\n'.join(output_lines[:-1])
             except json.JSONDecodeError:
                 logged_output = logs
                 return_output = None
+                valid = False
             
             return {
+                'valid': valid,
                 "return_output": return_output,
                 "logged_output": logged_output,
                 "error": logs if result['StatusCode'] != 0 else None
@@ -164,6 +179,7 @@ def run_code_in_docker(code):
 async def run_code(code_input: CodeInput):
     code = code_input.code
     
+    output = {}
     try:
         output = run_code_in_docker(code)
         logger.info("Code executed successfully in Docker")
@@ -178,9 +194,10 @@ async def run_code(code_input: CodeInput):
 
     if output.get("error"):
         logger.warning(f"Code execution produced an error: {output['error']}")
-    
+    print(output)
     return {
-        "return_output": output["return_output"],
+        "valid": output["valid"],
+        "return_output": str(output["return_output"]),
         "logged_output": output["logged_output"],
         "error": output.get("error")
     }

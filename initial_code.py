@@ -1,4 +1,3 @@
 class Problem:
-    def solution(self, n):
-        print(f'Processing {n}')
-        return n * 8
+    def solution(self, nums):
+       pass
