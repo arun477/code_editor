@@ -99,7 +99,7 @@
     <script>
 
         // fetch problem description
-        fetch('http://localhost:8000/problem_description/2')
+        fetch('http://localhost:8000/problem_description/1')
             .then(response => response.json())
             .then(data => {
                 // Use fetched initial code
@@ -108,7 +108,7 @@
             .catch(error => console.error('Error fetching initial code:', error));
 
         // fetch initial code from backend
-        fetch('http://localhost:8000/initial_code/2')
+        fetch('http://localhost:8000/initial_code/1')
             .then(response => response.json())
             .then(data => {
                 // Use fetched initial code
@@ -157,15 +157,23 @@
                         headers: {
                             'Content-Type': 'application/json',
                         },
-                        body: JSON.stringify({ code: code, problem_id:'2' }),
+                        body: JSON.stringify({ code: code, problem_id: '1' }),
                     })
                         .then(response => response.json())
                         .then(data => {
                             printOutput.textContent = "Std Output:\n" + (data.logged_output || "No Std Output");
-                            returnOutput.textContent = "Return Output:\n" + (data.return_output || "No return output");
-                            console.log("Std Output:", data.logged_output);
-                            console.log("Return output:", data.return_output);
-                            if (data.valid) {
+
+                            let returnText = "Test Results:\n";
+                            data.results.forEach((result, index) => {
+                                returnText += `Test ${index + 1}:\n`;
+                                returnText += `  Input: ${JSON.stringify(result.input)}\n`;
+                                returnText += `  Expected: ${JSON.stringify(result.expected)}\n`;
+                                returnText += `  Output: ${JSON.stringify(result.output)}\n`;
+                                returnText += `  Valid: ${result.valid}\n\n`;
+                            });
+                            returnOutput.textContent = returnText;
+
+                            if (data.all_valid) {
                                 printOutput.classList.add("valid-output");
                                 returnOutput.classList.add("valid-output");
                                 printOutput.classList.remove("invalid-output");
