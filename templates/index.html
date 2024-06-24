@@ -99,7 +99,7 @@
     <script>
 
         // fetch problem description
-        fetch('http://localhost:8000/problem_description')
+        fetch('http://localhost:8000/problem_description/1')
             .then(response => response.json())
             .then(data => {
                 // Use fetched initial code
@@ -108,7 +108,7 @@
             .catch(error => console.error('Error fetching initial code:', error));
 
         // fetch initial code from backend
-        fetch('http://localhost:8000/initial_code')
+        fetch('http://localhost:8000/initial_code/1')
             .then(response => response.json())
             .then(data => {
                 // Use fetched initial code
