@@ -66,77 +66,53 @@ async def initial_code(problem_id:str):
 class CodeInput(BaseModel):
     code: str
 
+
 def create_script(code):
-    # Escape any curly braces in the user's code
-    escaped_code = code.replace("{", "{{").replace("}", "}}")
-
-    with open('./test_case.py', 'r') as f:
-        test_case_run = f.read()
-
-#     return f"""
-# import sys
-# from io import StringIO
-# from contextlib import redirect_stdout
-# import json
-# import inspect
-
-# {escaped_code}
-
-# {test_case_run}
-#     """
-    
-    return f"""
+    execution_template = """
 import sys
 from io import StringIO
 from contextlib import redirect_stdout
 import json
 import inspect
 
-{escaped_code}
+{USER_EXECUTION_CODE}         
 
 def run_solution():
     logged_output = StringIO()
     with redirect_stdout(logged_output):
-        if 'Problem' in globals() and callable(globals()['Problem']):
-            problem = Problem()
-            if hasattr(problem, 'solution') and callable(problem.solution):
-                # Check if solution method requires arguments
-                sig = inspect.signature(problem.solution)
-                if len(sig.parameters) > 0:
-                    # If it requires arguments, we'll pass a default value of 2
-                    input_data = [0,1,0,3,12]
-                    return_output = problem.solution(input_data)
-                    valid = return_output == input_data
-                    print(f"Expected Output: {{input_data}}")
-                else:
-                    return_output = problem.solution()
-                    valid = True
-                    print(f"Result of solution(): {{return_output}}")
-            else:
-                print("No solution method found in Problem class or it's not callable")
-                valid = False
-                return_output = None
-        else:
-            print("No Problem class found or it's not callable")
-            return_output = None
-            valid = False
+        valid = False
+        return_output = None
+        {PROBLEM_SPECIFIC_CODE}
     
     return logged_output.getvalue().strip(), return_output, valid
 
 if __name__ == "__main__":
     logged_output, return_output, valid = run_solution()
     print(logged_output)
-    print(json.dumps({{"return_output": return_output, "valid": valid}}))
-"""
-        
+    print(json.dumps({{"return_output": return_output, "valid": valid}}))"""
+
+    # Escape any curly braces in the user's code
+    escaped_code = code.replace("{", "{{").replace("}", "}}")
+
+    PROBLEM_SPECIFIC_CODE = """
+        input_data = [0, 1, 0, 3, 12]
+        return_output = Problem().solution(input_data)
+        expected_output = [1, 3, 12, 0, 0]  # Assuming the problem is to move zeroes to the end
+        valid = return_output == expected_output
+        print("Input: " + str(input_data))
+        print("Expected Output: " + str(expected_output))
+        print("Your Output: " + str(return_output))
+    """
+    return execution_template.format(USER_EXECUTION_CODE=escaped_code, PROBLEM_SPECIFIC_CODE=PROBLEM_SPECIFIC_CODE)
+
 def run_code_in_docker(code):
     client = docker.from_env()
     temp_dir = tempfile.mkdtemp()
+
     try:
         with open(os.path.join(temp_dir, "script.py"), "w") as f:
             f.write(create_script(code))
 
-        
         container = client.containers.run(
             "python:3.9-slim",
             ["python", "/app/script.py"],
@@ -199,7 +175,7 @@ async def run_code(code_input: CodeInput):
 
     if output.get("error"):
         logger.warning(f"Code execution produced an error: {output['error']}")
-    print(output)
+  
     return {
         "valid": output["valid"],
         "return_output": str(output["return_output"]),
