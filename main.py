@@ -13,7 +13,7 @@ import json
 import sqlite3
 from contextlib import contextmanager
 
-DATABASE_NAME = "problems.db"
+DATABASE_NAME = "problems_v2.db"
 
 @contextmanager
 def get_db_connection():
@@ -58,6 +58,10 @@ async def problem_description(problem_id:str):
     description = get_problem(problem_id)['problem_statement']
     return {"description": description}
 
+@app.get('/get_problem/{problem_id}')
+async def get_proble(problem_id:str):
+    return get_problem(problem_id)
+
 @app.get('/initial_code/{problem_id}')
 async def initial_code(problem_id:str):
     code = get_problem(problem_id)['starting_code']
@@ -65,9 +69,13 @@ async def initial_code(problem_id:str):
 
 class CodeInput(BaseModel):
     code: str
+    problem_id: str
 
 
-def create_script(code):
+def create_script(code, problem_id):
+    problem = get_problem(problem_id)
+    test_cases = problem['test_cases']
+
     execution_template = """
 import sys
 from io import StringIO
@@ -93,25 +101,51 @@ if __name__ == "__main__":
 
     # Escape any curly braces in the user's code
     escaped_code = code.replace("{", "{{").replace("}", "}}")
+    # escaped_code = code
+
+    # PROBLEM_SPECIFIC_CODE = """
+    #     test_cases = {test_cases}
+    #     input_data = [0, 1, 0, 3, 12]
+    #     return_output = Problem().solution(input_data)
+    #     expected_output = [1, 3, 12, 0, 0]  # Assuming the problem is to move zeroes to the end
+    #     valid = return_output == expected_output
+    #     print("Input: " + str(input_data))
+    #     print("Expected Output: " + str(expected_output))
+    #     print("Your Output: " + str(return_output))
+    # """.format(test_cases = str(test_cases))
 
     PROBLEM_SPECIFIC_CODE = """
-        input_data = [0, 1, 0, 3, 12]
-        return_output = Problem().solution(input_data)
-        expected_output = [1, 3, 12, 0, 0]  # Assuming the problem is to move zeroes to the end
-        valid = return_output == expected_output
-        print("Input: " + str(input_data))
-        print("Expected Output: " + str(expected_output))
-        print("Your Output: " + str(return_output))
-    """
+        test_cases = {test_cases}
+        results = []
+    
+        for test_case in test_cases:
+            input_data = test_case['input']
+            return_output = Problem().solution(*input_data)
+            expected_output =  test_case['output']
+            valid = return_output == expected_output
+            results.append((valid, expected_output, input_data))
+
+        all_valid = all([ele[0] for ele in results])
+        if all_valid:
+            print(len(test_cases), 'Tests Passed')
+        else:
+            print(len(test_cases),  'Tests Failed')
+        valid = all_valid
+        return_output = results
+    """.format(test_cases = str(test_cases))
+    
     return execution_template.format(USER_EXECUTION_CODE=escaped_code, PROBLEM_SPECIFIC_CODE=PROBLEM_SPECIFIC_CODE)
 
-def run_code_in_docker(code):
+def run_code_in_docker(code, problem_id):
     client = docker.from_env()
     temp_dir = tempfile.mkdtemp()
 
     try:
+        # with open('./temp_code.py', 'w') as dest:
+        #     dest.write(create_script(code, problem_id))
+        
         with open(os.path.join(temp_dir, "script.py"), "w") as f:
-            f.write(create_script(code))
+            f.write(create_script(code, problem_id))
 
         container = client.containers.run(
             "python:3.9-slim",
@@ -159,20 +193,14 @@ def run_code_in_docker(code):
 @app.post("/run_code")
 async def run_code(code_input: CodeInput):
     code = code_input.code
+    problem_id = code_input.problem_id
     
     output = {}
     try:
-        output = run_code_in_docker(code)
-        logger.info("Code executed successfully in Docker")
+        output = run_code_in_docker(code, problem_id)
+        logger.info("Code executed successfully")
     except Exception as docker_error:
-        logger.warning(f"Failed to run in Docker: {str(docker_error)}. Falling back to local execution.")
-        # try:
-        #     output = run_code_locally(code)
-        #     logger.info("Code executed successfully locally")
-        # except Exception as local_error:
-        #     logger.exception("Local execution also failed")
-        #     raise HTTPException(status_code=400, detail=str(local_error))
-
+        logger.warning(f"Failed to run: {str(docker_error)}")
     if output.get("error"):
         logger.warning(f"Code execution produced an error: {output['error']}")
   
