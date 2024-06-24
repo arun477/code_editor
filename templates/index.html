@@ -7,22 +7,18 @@
     <title>Python Coding Environment</title>
     <style>
         body {
-
             overflow-x: hidden;
             height: 100%;
-
         }
 
         #parent {
             display: flex;
             flex-wrap: wrap;
-            /* Allow flex items to wrap */
             width: 100%;
         }
 
         #descriptions {
             width: 37%;
-            /* Initial width for the description box */
             height: 100%;
             border: 1px solid grey;
             padding: 20px;
@@ -39,7 +35,6 @@
             right: 10px;
             position: fixed;
             margin-right: 30px;
-
         }
 
         #editor {
@@ -53,12 +48,9 @@
         #return-output {
             margin-top: 10px;
         }
-
-        #print-output,
         #return-output {
             width: calc(100% - 20px);
-            /* Take full width with 10px padding on each side */
-            height: 100px;
+            height: 600px;
             border: 1px solid grey;
             padding: 10px;
             font-family: monospace;
@@ -92,44 +84,34 @@
         </div>
     </div>
 
-    </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/markdown-it/12.3.2/markdown-it.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs/loader.min.js"></script>
 
     <script>
-
         // fetch problem description
         fetch('http://localhost:8000/problem_description/1')
             .then(response => response.json())
             .then(data => {
-                // Use fetched initial code
                 addDescription(data.description);
             })
-            .catch(error => console.error('Error fetching initial code:', error));
+            .catch(error => console.error('Error fetching problem description:', error));
 
         // fetch initial code from backend
         fetch('http://localhost:8000/initial_code/1')
             .then(response => response.json())
             .then(data => {
-                // Use fetched initial code
                 createEditor(data.code);
             })
             .catch(error => console.error('Error fetching initial code:', error));
 
-
         function addDescription(description) {
             let div = document.getElementById('descriptions')
-
             const md = window.markdownit();
             const htmlContent = md.render(description);
             div.innerHTML = htmlContent;
-
-            // div.innerText = description;
-
         }
 
         function createEditor(initialCode) {
-
             require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs' } });
 
             require(["vs/editor/editor.main"], function () {
@@ -161,29 +143,41 @@
                     })
                         .then(response => response.json())
                         .then(data => {
-                            printOutput.textContent = "Std Output:\n" + (data.logged_output || "No Std Output");
-
+                            const parsedData = data['outputs']['results'];
                             let returnText = "Test Results:\n";
-                            data.results.forEach((result, index) => {
+                            let allValid = true;
+                            printOutput.textContent = "";
+
+                            parsedData.forEach((result, index) => {
                                 returnText += `Test ${index + 1}:\n`;
                                 returnText += `  Input: ${JSON.stringify(result.input)}\n`;
                                 returnText += `  Expected: ${JSON.stringify(result.expected)}\n`;
                                 returnText += `  Output: ${JSON.stringify(result.output)}\n`;
-                                returnText += `  Valid: ${result.valid}\n\n`;
+                                returnText += `  Valid: ${result.valid}\n`;
+                               
+                                if (result.error) {
+                                    returnText += `  Error: ${result.error}\n`;
+                                }
+                                if (result.std_output) {
+                                    returnText += `  Std Output: ${result.std_output}\n`;
+                                }
+                                returnText += "\n";
+
+                                if (!result.valid) {
+                                    allValid = false;
+                                }
                             });
+
                             returnOutput.textContent = returnText;
 
-                            if (data.all_valid) {
-                                printOutput.classList.add("valid-output");
+                            if (allValid) {
                                 returnOutput.classList.add("valid-output");
-                                printOutput.classList.remove("invalid-output");
                                 returnOutput.classList.remove("invalid-output");
                             } else {
-                                printOutput.classList.add("invalid-output");
                                 returnOutput.classList.add("invalid-output");
-                                printOutput.classList.remove("valid-output");
                                 returnOutput.classList.remove("valid-output");
                             }
+                            
                         })
                         .catch((error) => {
                             printOutput.textContent = "Error: " + error;

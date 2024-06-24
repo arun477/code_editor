@@ -1,232 +1,188 @@
-import os
-import docker
-import tempfile
-import logging
+import sqlite3
+from contextlib import contextmanager
 from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
 from fastapi.requests import Request
+from pydantic import BaseModel
+import logging
+import docker
+import tempfile
+import os
 import json
-import sqlite3
-from contextlib import contextmanager
 
-# Database setup
-DATABASE_NAME = "problems_v2.db"
-
+DB_NAME = 'problems_v2.db'
+PROBLEM_TABLE = 'problems'
 
 @contextmanager
-def get_db_connection():
-    conn = sqlite3.connect(DATABASE_NAME)
-    conn.row_factory = sqlite3.Row
+def create_sql_connection():
     try:
+        conn = sqlite3.connect(DB_NAME)
+        conn.row_factory = sqlite3.Row
         yield conn
     finally:
         conn.close()
 
-
-def get_problem(problem_id):
-    with get_db_connection() as conn:
+def get_problem(problem_id:str):
+    with create_sql_connection() as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM problems WHERE id = ?", (problem_id,))
-        return cursor.fetchone()
+        return cursor.execute(f'SELECT * FROM {PROBLEM_TABLE} WHERE id = ?', (problem_id)).fetchone()
 
 
-# FastAPI setup
 app = FastAPI()
-templates = Jinja2Templates(directory="templates")
-client = docker.from_env()
+templates = Jinja2Templates(directory='templates')
 
-# Logging setup
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-# CORS setup
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+docker_client = docker.from_env()
 
 
-# Routes
-@app.get("/", response_class=HTMLResponse)
-async def read_root(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+@app.get('/', response_class=HTMLResponse)
+async def read_root(request:Request):
+    return templates.TemplateResponse('index.html', {'request': request})
 
-
-@app.get("/problem_description/{problem_id}")
-async def problem_description(problem_id: str):
+@app.get('/problem_description/{problem_id}')
+def get_problem_description(problem_id:str):
     problem = get_problem(problem_id)
     if not problem:
-        raise HTTPException(status_code=404, detail="Problem not found")
-    return {"description": problem["problem_statement"]}
-
-
-@app.get("/get_problem/{problem_id}")
-async def get_problem_route(problem_id: str):
-    problem = get_problem(problem_id)
-    if not problem:
-        raise HTTPException(status_code=404, detail="Problem not found")
-    return problem
-
+        raise HTTPException(status_code=404, detail='not found')
+    return {'description': problem['problem_statement']}
 
 @app.get("/initial_code/{problem_id}")
 async def initial_code(problem_id: str):
     problem = get_problem(problem_id)
     if not problem:
-        raise HTTPException(status_code=404, detail="Problem not found")
+        raise HTTPException(status_code=404, detail="problem not found")
     return {"code": problem["starting_code"]}
 
+@app.get('/get_problem/{problem_id}')
+def get_problem_route(problem_id:str):
+    problem = get_problem(problem_id)
+    if not problem:
+        raise HTTPException(status_code=404, detail='not found')
+    return problem
 
-class CodeInput(BaseModel):
-    code: str
-    problem_id: str
+class RunCodeInput(BaseModel):
+    problem_id : str
+    code : str
 
 
 def create_script(code, problem_id):
     problem = get_problem(problem_id)
     if not problem:
-        raise HTTPException(status_code=404, detail="Problem not found")
-
+        raise HTTPException(status_code=404, detail="problem not found")
     test_cases = json.loads(problem["test_cases"])
-
-    execution_template = """
-import sys
+    execution_template = """import sys
 from io import StringIO
 from contextlib import redirect_stdout
 import json
 import inspect
 
-{USER_EXECUTION_CODE}         
+{user_code}
 
 def run_solution():
-    logged_output = StringIO()
-    with redirect_stdout(logged_output):
-        results = []
-        for test_case in {TEST_CASES}:
-            input_data = test_case['input']
-            expected_output = test_case['output']
-            try:
+    results = []
+    for test_case in {test_cases}:
+        input_data = test_case['input']
+        expected_output = test_case['output']
+        error = ""
+        return_output = None
+        valid = None
+        logged_output = StringIO()
+        try:
+            logged_output = StringIO()
+            with redirect_stdout(logged_output):
                 return_output = Problem().solution(*input_data)
                 valid = return_output == expected_output
-            except Exception as e:
-                return_output = str(e)
-                valid = False
-            results.append({{"input": input_data, "expected": expected_output, "output": return_output, "valid": valid}})
-        
-        all_valid = all(result['valid'] for result in results)
-        print("Tests {{}}".format('Passed' if all_valid else 'Failed'))
-    
-    return logged_output.getvalue().strip(), results, all_valid
+        except Exception as e:
+            error = str(e)
+        results.append(
+            {{
+                "input": input_data,
+                "expected": expected_output,
+                "output": return_output,
+                "valid": valid,
+                "error": error,
+                "std_output": logged_output.getvalue().strip(),
+            }}
+        )
+    return {{"results": results}}
 
 if __name__ == "__main__":
-    logged_output, results, all_valid = run_solution()
-    print(logged_output)
-    print(json.dumps({{"results": results, "all_valid": all_valid}}))
+    print(json.dumps(run_solution()))
 """
-
-    return execution_template.format(
-        USER_EXECUTION_CODE=code, TEST_CASES=json.dumps(test_cases)
+    formatted_script = execution_template.format(
+        user_code=code,
+        test_cases=json.dumps(test_cases)
     )
+    return formatted_script
 
-
-def run_code_in_docker(code, problem_id):
+@contextmanager
+def get_docker_container(container_config):
     client = docker.from_env()
+    container = None
+    try:
+        container = client.containers.run(**container_config)
+        yield container
+    finally:
+        if container:
+            container.remove(force=True)     
+
+def run_docker(code, problem_id):
     temp_dir = tempfile.mkdtemp()
 
+    executable_script = create_script(code, problem_id)
+    with open(os.path.join(temp_dir, 'script.py'), 'w') as dest:
+        dest.write(executable_script)
+    
+    container_config = {
+        "image":'python:3.9-slim',
+           "command":['python', '/app/script.py'],
+           "volumes" : {
+               temp_dir: {
+                   'bind': '/app', 'mode':'ro'
+               },
+           },
+           "detach" : True,
+           "mem_limit" : '100m',
+           "cpu_quota" : 50000,
+           "network_mode" : "none",
+           "read_only" : True
+    }
+
     try:
-        script_content = create_script(code, problem_id)
-        with open(os.path.join(temp_dir, "script.py"), "w") as f:
-            f.write(script_content)
-
-        container = client.containers.run(
-            "python:3.9-slim",
-            ["python", "/app/script.py"],
-            volumes={temp_dir: {"bind": "/app", "mode": "ro"}},
-            detach=True,
-            mem_limit="100m",
-            cpu_quota=50000,
-            network_mode="none",
-            read_only=True,
-        )
-
-        try:
-            result = container.wait(timeout=30)
-            logs = container.logs(stdout=True, stderr=True).decode("utf-8")
-
-            output_lines = logs.strip().split("\n")
-
-            try:
-                output = json.loads(output_lines[-1])
-                results = output["results"]
-                all_valid = output["all_valid"]
-                logged_output = "\n".join(output_lines[:-1])
-            except json.JSONDecodeError:
-                logged_output = logs
-                results = None
-                all_valid = False
-
+        with get_docker_container(container_config=container_config) as container:
+            container_state = container.wait(timeout=30)
+            logs = container.logs(stdout=True, stderr=True).decode('utf-8')
+            logs_lines = logs.strip().split('\n')
+            outputs = json.loads(logs_lines[-1])
+            logs = "\n".join(logs_lines[:-1])
             return {
-                "all_valid": all_valid,
-                "results": results,
-                "logged_output": logged_output,
-                "error": logs if result["StatusCode"] != 0 else None,
+                "outputs": outputs,
+                "logs": logs,
+                "error": logs if container_state["StatusCode"] != 0 else None,
             }
-        finally:
-            container.remove(force=True)
     except Exception as e:
-        logger.exception("Error in Docker execution")
+        logger.exception('code execution failing', e)
         return {
-            "all_valid": False,
-            "results": None,
-            "logged_output": None,
-            "error": str(e),
+            "outputs": {},
+            "error": ""
         }
     finally:
         for file in os.listdir(temp_dir):
             os.remove(os.path.join(temp_dir, file))
         os.rmdir(temp_dir)
-
-
-@app.post("/run_code")
-async def run_code(code_input: CodeInput):
-    code = code_input.code
-    problem_id = code_input.problem_id
-
-    try:
-        output = run_code_in_docker(code, problem_id)
-        logger.info("Code executed successfully")
-    except HTTPException as http_error:
-        # Re-raise HTTP exceptions (like 404 Not Found)
-        raise http_error
-    except Exception as docker_error:
-        logger.exception(f"Failed to run: {str(docker_error)}")
-        raise HTTPException(
-            status_code=500, detail=f"Internal server error: {str(docker_error)}"
-        )
-
-    if output.get("error"):
-        logger.warning(f"Code execution produced an error: {output['error']}")
-        return {
-            "all_valid": False,
-            "results": [],
-            "logged_output": output["error"],
-            "error": output["error"],
-        }
-
-    return {
-        "all_valid": output["all_valid"],
-        "results": output["results"],
-        "logged_output": output["logged_output"],
-        "error": output.get("error"),
-    }
-
-
+    
+    
+@app.post('/run_code')
+def run_code(client_input: RunCodeInput):
+    problem_id, code = client_input.problem_id, client_input.code
+    result = run_docker(code, problem_id)
+    return result or {}
+    
+    
 if __name__ == "__main__":
     import uvicorn
-
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
