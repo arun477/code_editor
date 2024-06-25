@@ -1,0 +1,39 @@
+import sys
+from io import StringIO
+from contextlib import redirect_stdout, redirect_stderr
+import json
+import traceback
+
+{{ user_code | safe }}
+
+def run_solution():
+    results = []
+    for test_case in {{ test_cases | tojson | safe }}:
+        input_data = test_case['input']
+        expected_output = test_case['output']
+        error = ""
+        return_output = None
+        valid = None
+        logged_output = StringIO()
+        logged_error = StringIO()
+        
+        try:
+            with redirect_stdout(logged_output), redirect_stderr(logged_error):
+                return_output = Problem().solution(*input_data)
+                valid = return_output == expected_output
+        except Exception as e:
+            error = traceback.format_exc()
+        
+        results.append({
+            "input": input_data,
+            "expected": expected_output,
+            "output": return_output,
+            "valid": valid,
+            "error": error,
+            "std_output": logged_output.getvalue().strip(),
+            "std_error": logged_error.getvalue().strip()
+        })
+    return {"results": results}
+
+if __name__ == "__main__":
+    print(json.dumps(run_solution()))

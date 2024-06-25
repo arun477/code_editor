@@ -146,7 +146,12 @@
                             const parsedData = data['outputs']['results'];
                             let returnText = "Test Results:\n";
                             let allValid = true;
-                            printOutput.textContent = "";
+                            printOutput.textContent = data.error || ""
+                            if(data.error){
+                                returnOutput.classList.add("invalid-output");
+                                returnOutput.classList.remove("valid-output");
+                                return
+                            }
 
                             parsedData.forEach((result, index) => {
                                 returnText += `Test ${index + 1}:\n`;
@@ -180,7 +185,7 @@
                             
                         })
                         .catch((error) => {
-                            printOutput.textContent = "Error: " + error;
+                            printOutput.textContent = "Something went wrong, try again."
                             console.error('Error:', error);
                         });
                 });
