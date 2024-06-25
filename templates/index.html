@@ -7,188 +7,101 @@
     <title>Python Coding Environment</title>
     <style>
         body {
-            overflow-x: hidden;
-            height: 100%;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
         }
 
         #parent {
-            display: flex;
-            flex-wrap: wrap;
-            width: 100%;
-        }
-
-        #descriptions {
-            width: 37%;
-            height: 100%;
-            border: 1px solid grey;
+            max-width: 800px;
+            margin: 20px auto;
             padding: 20px;
-            font-family: monospace;
-            white-space: pre-wrap;
-            overflow-y: scroll;
-            overflow-x: hidden;
-            position: fixed;
-            margin-left: 30px;
+            background-color: #fff;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
         }
 
-        #editor-container {
-            width: 55%;
-            right: 10px;
-            position: fixed;
-            margin-right: 30px;
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #333;
         }
 
-        #editor {
-            width: 100%;
-            height: 400px;
-            border: 1px solid grey;
+        ul {
+            list-style-type: none;
+            padding: 0;
         }
 
-        #controls,
-        #print-output,
-        #return-output {
-            margin-top: 10px;
-        }
-        #return-output {
-            width: calc(100% - 20px);
-            height: 600px;
-            border: 1px solid grey;
-            padding: 10px;
-            font-family: monospace;
-            white-space: pre-wrap;
-            overflow-y: scroll;
-            overflow-x: hidden;
+        li {
+            padding: 10px 0;
+            border-bottom: 1px solid #ddd;
         }
 
-        .valid-output {
-            border-color: green !important;
-            border-width: 3px !important;
+        a {
+            color: #007bff;
+            text-decoration: none;
         }
 
-        .invalid-output {
-            border-color: red !important;
-            border-width: 3px !important;
+        a:hover {
+            text-decoration: underline;
+        }
+
+        .loader {
+            display: none;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
         }
     </style>
 </head>
 
 <body>
     <div id="parent">
-        <div id="descriptions"></div>
-        <div id="editor-container">
-            <div id="editor"></div>
-            <div id="controls">
-                <button id="run-btn">Run</button>
-            </div>
-            <div id="print-output"></div>
-            <div id="return-output"></div>
-        </div>
+        <h1>Python Coding Problems</h1>
+        <div class="loader" id="loader"></div>
+        <ul id="problems">
+        </ul>
     </div>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/markdown-it/12.3.2/markdown-it.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs/loader.min.js"></script>
-
     <script>
-        // fetch problem description
-        fetch('http://localhost:8000/problem_description/3')
+        document.getElementById('loader').style.display = 'block'; // Show loader
+
+        // fetch problems
+        fetch('http://localhost:8000/all_problems')
             .then(response => response.json())
             .then(data => {
-                addDescription(data.description);
+                addProblemsList(data.problems);
+                document.getElementById('loader').style.display = 'none'; // Hide loader
             })
-            .catch(error => console.error('Error fetching problem description:', error));
+            .catch(error => {
+                console.error('Error fetching problem description:', error);
+                document.getElementById('loader').style.display = 'none'; // Hide loader
+            });
 
-        // fetch initial code from backend
-        fetch('http://localhost:8000/initial_code/3')
-            .then(response => response.json())
-            .then(data => {
-                createEditor(data.code);
-            })
-            .catch(error => console.error('Error fetching initial code:', error));
+        function addProblemsList(problems) {
+            let ul = document.getElementById('problems');
+            ul.innerHTML = ''; // Clear existing content
 
-        function addDescription(description) {
-            let div = document.getElementById('descriptions')
-            const md = window.markdownit();
-            const htmlContent = md.render(description);
-            div.innerHTML = htmlContent;
-        }
-
-        function createEditor(initialCode) {
-            require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs' } });
-
-            require(["vs/editor/editor.main"], function () {
-                var editor = monaco.editor.create(document.getElementById('editor'), {
-                    value: initialCode,
-                    language: "python",
-                    theme: "vs-dark",
-                    automaticLayout: true,
-                    minimap: { enabled: false },
-                    fontSize: 14,
-                    tabSize: 4,
-                    insertSpaces: true,
-                    wordWrap: 'on'
-                });
-
-                document.getElementById('run-btn').addEventListener('click', function () {
-                    var code = editor.getValue();
-                    var printOutput = document.getElementById('print-output');
-                    var returnOutput = document.getElementById('return-output');
-                    printOutput.textContent = "Running code...\n";
-                    returnOutput.textContent = "";
-
-                    fetch('http://localhost:8000/run_code', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ code: code, problem_id: '3' }),
-                    })
-                        .then(response => response.json())
-                        .then(data => {
-                            const parsedData = data['outputs']['results'];
-                            let returnText = "Test Results:\n";
-                            let allValid = true;
-                            printOutput.textContent = data.error || ""
-                            if(data.error){
-                                returnOutput.classList.add("invalid-output");
-                                returnOutput.classList.remove("valid-output");
-                                return
-                            }
-
-                            parsedData.forEach((result, index) => {
-                                returnText += `Test ${index + 1}:\n`;
-                                returnText += `  Input: ${JSON.stringify(result.input)}\n`;
-                                returnText += `  Expected: ${JSON.stringify(result.expected)}\n`;
-                                returnText += `  Output: ${JSON.stringify(result.output)}\n`;
-                                returnText += `  Valid: ${result.valid}\n`;
-                               
-                                if (result.error) {
-                                    returnText += `  Error: ${result.error}\n`;
-                                }
-                                if (result.std_output) {
-                                    returnText += `  Std Output: ${result.std_output}\n`;
-                                }
-                                returnText += "\n";
-
-                                if (!result.valid) {
-                                    allValid = false;
-                                }
-                            });
-
-                            returnOutput.textContent = returnText;
-
-                            if (allValid) {
-                                returnOutput.classList.add("valid-output");
-                                returnOutput.classList.remove("invalid-output");
-                            } else {
-                                returnOutput.classList.add("invalid-output");
-                                returnOutput.classList.remove("valid-output");
-                            }
-                            
-                        })
-                        .catch((error) => {
-                            printOutput.textContent = "Something went wrong, try again."
-                            console.error('Error:', error);
-                        });
-                });
+            problems.forEach(problem => {
+                let li = document.createElement('li');
+                let a = document.createElement('a');
+                a.href = 'http://localhost:8000/problem/' + problem.id; // Assuming the link structure
+                a.textContent = problem.title;
+                li.appendChild(a);
+                ul.appendChild(li);
             });
         }
     </script>

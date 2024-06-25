@@ -12,7 +12,7 @@ import os
 import json
 
 
-DB_NAME = "problems_v5.db"
+DB_NAME = "problems_v6.db"
 PROBLEM_TABLE = "problems"
 
 
@@ -32,6 +32,11 @@ def get_problem(problem_id: str):
             f"SELECT * FROM {PROBLEM_TABLE} WHERE id = ?", (problem_id)
         ).fetchone()
 
+def get_all_problems():
+    with create_sql_connection() as conn:
+        cursor = conn.cursor()
+        return cursor.execute("SELECT id,title from problems").fetchall()
+
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
@@ -46,6 +51,13 @@ docker_client = docker.from_env()
 async def read_root(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
+@app.get("/problem/{problem_id}", response_class=HTMLResponse)
+async def problem_page(request: Request):
+    return templates.TemplateResponse("problem.html", {"request": request})
+
+@app.get("/all_problems")
+async def get_all_problems_route():
+    return {'problems': get_all_problems()}
 
 @app.get("/problem_description/{problem_id}")
 def get_problem_description(problem_id: str):
