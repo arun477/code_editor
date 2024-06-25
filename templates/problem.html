@@ -36,13 +36,17 @@
             flex: 1;
             min-width: 300px;
             max-width: 60%;
+
+        }
+
+        #editor-sub {
+            background-color: #1E1E1E;
             padding: 20px;
         }
 
         #editor {
             width: 100%;
             height: 400px;
-            border: 1px solid #ccc;
         }
 
         #controls {
@@ -50,6 +54,7 @@
         }
 
         #return-output {
+            padding: 20px;
             margin-top: 10px;
             padding: 10px;
             font-family: monospace;
@@ -81,7 +86,7 @@
         button:hover {
             background-color: #0056b3;
         }
-        
+
         #navbar {
             padding: 20px;
             border-bottom: 1px solid lightgray;
@@ -91,10 +96,10 @@
 
 <body>
     <div id="navbar">
-    <a href="/">
-     <div>Home</div>
-    </a>
-</div>
+        <a href="/">
+            <div>Home</div>
+        </a>
+    </div>
     <div id="parent">
         <div id="descriptions">
             <h2 id="title"></h2>
@@ -102,12 +107,18 @@
         </div>
 
         <div id="editor-container">
-            <div id="editor"></div>
-            <div id="controls">
-                <button id="run-btn">Run</button>
+            <div id="editor-sub">
+                <div id="editor"></div>
+
             </div>
-            <div id="print-output"></div>
-            <div id="return-output"></div>
+
+            <div style="padding:20px;">
+                <div id="controls">
+                    <button id="run-btn">Run</button>
+                </div>
+                <div id="print-output"></div>
+                <div id="return-output"></div>
+            </div>
         </div>
     </div>
 
