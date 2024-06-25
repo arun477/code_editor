@@ -133,7 +133,7 @@ def run_docker(code, problem_id):
                 return {
                     "outputs": {},
                     "logs": logs,
-                    "error": f"An unexpected error occurred while running your code. Logs: {logs}",
+                    "error": "An unexpected error occurred while running your code. Logs",
                 }
     except Exception as e:
         logger.exception("code execution failing", e)
