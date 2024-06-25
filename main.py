@@ -134,7 +134,7 @@ def create_temp_exection_files(executable_script, user_script):
 
     with open(os.path.join(temp_dir, "__init__.py"), "w") as dest:
         dest.write("")
-
+    
     return temp_dir
 
 
@@ -187,13 +187,13 @@ def run_docker(code, problem_id):
             "python /app/execution_script.py",
         ],
         "volumes": {
-            temp_dir: {"bind": "/app", "mode": "ro"},
+            temp_dir: {"bind": "/app", "mode": "rw"},
         },
         "detach": True,
         "mem_limit": "100m",
         "cpu_quota": 50000,
         "network_mode": "none",
-        "read_only": True,
+        "read_only": False,
     }
 
     try:
@@ -202,8 +202,12 @@ def run_docker(code, problem_id):
             logs = container.logs(stdout=True, stderr=True).decode("utf-8")
             # ok error coming from container itself
             print((logs))
+            
             try:
-                output = json.loads(logs)
+                output_file_path = os.path.join(temp_dir, "results.json")
+                with open(output_file_path, "r") as file:
+                    output = json.loads(file.read())
+                # output = json.loads(logs)
                 if "error" in output:
                     return {"outputs": {}, "error": output["error"]}
                 return {"outputs": output, "logs": "", "error": None}
@@ -220,9 +224,11 @@ def run_docker(code, problem_id):
             "error": "An unexpected error occurred while running your code.",
         }
     finally:
-        for file in os.listdir(temp_dir):
-            os.remove(os.path.join(temp_dir, file))
-        os.rmdir(temp_dir)
+        shutil.rmtree(temp_dir)
+
+        # for file in os.listdir(temp_dir):
+        #     os.remove(os.path.join(temp_dir, file))
+        # os.rmdir(temp_dir)
 
 
 @app.post("/run_code")

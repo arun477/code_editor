@@ -37,4 +37,5 @@ def run_solution():
     return {"results": results}
 
 if __name__ == "__main__":
-    print(json.dumps(run_solution()))
+    with open('/app/results.json', 'w') as dest:
+        dest.write(json.dumps(run_solution()))
