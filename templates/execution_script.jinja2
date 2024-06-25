@@ -9,7 +9,7 @@ from typing import Any, List, Tuple, Dict, Set, Union, Optional, Callable
 
 def run_solution():
     results = []
-    for test_case in {{ test_cases | tojson | safe }}:
+    for test_case in {{ test_cases | safe }}:
         error = ""
         logged_output = StringIO()
         logged_error = StringIO()

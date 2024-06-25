@@ -2,7 +2,7 @@
 *.py[cod]
 __pycache__/
 *.so
-*.db
+*.json
 
 # C extensions
 *.c
