@@ -25,13 +25,15 @@ def create_sql_connection():
     finally:
         conn.close()
 
+
 def get_problem(problem_id: str):
-    print('problem_id', problem_id)
+    print("problem_id", problem_id)
     with create_sql_connection() as conn:
         cursor = conn.cursor()
         return cursor.execute(
             f"SELECT * FROM {PROBLEM_TABLE} WHERE questionId = ?", (problem_id,)
         ).fetchone()
+
 
 def get_all_problems():
     with create_sql_connection() as conn:
@@ -52,13 +54,16 @@ docker_client = docker.from_env()
 async def read_root(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
+
 @app.get("/problem/{problem_id}", response_class=HTMLResponse)
 async def problem_page(request: Request):
     return templates.TemplateResponse("problem.html", {"request": request})
 
+
 @app.get("/all_problems")
 async def get_all_problems_route():
-    return {'problems': get_all_problems()}
+    return {"problems": get_all_problems()}
+
 
 @app.get("/problem_description/{problem_id}")
 def get_problem_description(problem_id: str):
@@ -95,9 +100,15 @@ def create_script(code, problem_id):
         raise HTTPException(status_code=404, detail="problem not found")
     test_cases = json.loads(problem["test_cases"])
 
-    return templates.get_template("execution_script.jinja2").render(
-        user_code=code, test_cases=test_cases, problem_test_run_code=problem['test_run_code']
+    executable_script = templates.get_template("execution_script.jinja2").render(
+        test_cases=test_cases, problem_test_run_code=problem["test_run_code"]
     )
+
+    user_script = templates.get_template("user_code_template.jinja2").render(
+        user_code=code
+    )
+
+    return (executable_script, user_script)
 
 
 @contextmanager
@@ -112,19 +123,35 @@ def get_docker_container(container_config):
             container.remove(force=True)
 
 
-def run_docker(code, problem_id):
+def create_temp_exection_files(executable_script, user_script):
     temp_dir = tempfile.mkdtemp()
-
-    executable_script = create_script(code, problem_id)
-    # with open("temp_script.py", "w") as dest:
-    #     dest.write(executable_script)
-    with open(os.path.join(temp_dir, "script.py"), "w") as dest:
+    with open(os.path.join(temp_dir, "execution_script.py"), "w") as dest:
         dest.write(executable_script)
 
+    with open(os.path.join(temp_dir, "user_script.py"), "w") as dest:
+        dest.write(user_script)
+
+    with open(os.path.join(temp_dir, "__init__.py"), "w") as dest:
+        dest.write("")
+
+    return temp_dir
+
+
+def run_docker(code, problem_id):
+    executable_script, user_script = create_script(code, problem_id)
+
+    temp_dir = create_temp_exection_files(executable_script, user_script)
+
+    # with open("temp_script.py", "w") as dest:
+    #     dest.write(executable_script)
 
     container_config = {
         "image": "python:3.9-slim",
-        "command": ["python", "/app/script.py"],
+        "command": [
+            "sh",
+            "-c",
+            "python /app/user_script.py && python /app/execution_script.py",
+        ],
         "volumes": {
             temp_dir: {"bind": "/app", "mode": "ro"},
         },
@@ -139,6 +166,8 @@ def run_docker(code, problem_id):
         with get_docker_container(container_config=container_config) as container:
             container.wait(timeout=30)
             logs = container.logs(stdout=True, stderr=True).decode("utf-8")
+            # ok error coming from container itself
+            print((logs))
             try:
                 output = json.loads(logs)
                 if "error" in output:

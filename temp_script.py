@@ -1,13 +1,13 @@
+import sys
 from io import StringIO
 from contextlib import redirect_stdout, redirect_stderr
 import json
 from typing import Any, List, Tuple, Dict, Set, Union, Optional, Callable
-import traceback
 from user_script import *
 
 def run_solution():
     results = []
-    for test_case in {{ test_cases | safe }}:
+    for test_case in [{'input': [[1, 2, 3, 4]], 'output': [24, 12, 8, 6]}, {'input': [[-1, 1, 0, -3, 3]], 'output': [0, 0, 9, 0, 0]}]:
         error = ""
         logged_output = StringIO()
         logged_error = StringIO()
@@ -19,10 +19,10 @@ def run_solution():
         
         try:
             with redirect_stdout(logged_output), redirect_stderr(logged_error):
-                {{ problem_test_run_code | safe | indent(16) }}
+                return_output = Solution().productExceptSelf(*input_data)
+                valid = return_output == expected_output
 
         except Exception as e:
-            # i want to remove file name from this line
             error = str(e)
         
         results.append({
