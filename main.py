@@ -10,6 +10,7 @@ import docker
 import tempfile
 import os
 import json
+import shutil
 
 
 DB_NAME = "problems_v8.db"
@@ -141,16 +142,49 @@ def run_docker(code, problem_id):
     executable_script, user_script = create_script(code, problem_id)
 
     temp_dir = create_temp_exection_files(executable_script, user_script)
+    temp_dir_cache = tempfile.mkdtemp()
 
     # with open("temp_script.py", "w") as dest:
     #     dest.write(executable_script)
+
+    with open(os.path.join(temp_dir_cache, "user_script.py"), "w") as dest:
+        dest.write(user_script)
+
+    validation_config = {
+        "image": "python:3.9-slim",
+        "command": ["python", "-m", "py_compile", "/app-compile/user_script.py"],
+        "volumes": {
+            temp_dir_cache: {"bind": "/app-compile", "mode": "rw"},
+        },
+        "detach": True,
+        "mem_limit": "100m",
+        "cpu_quota": 50000,
+        "network_mode": "none",
+        "read_only": True,
+    }
+    try:
+        with get_docker_container(container_config=validation_config) as container:
+            exit_code = container.wait(timeout=10)["StatusCode"]
+            if exit_code != 0:
+                logs = container.logs(stdout=True, stderr=True).decode("utf-8")
+                sanitized_error = str(logs)
+                return {"outputs": {}, "error": sanitized_error}
+    except Exception as e:
+        logger.exception("code execution failing", e)
+        return {
+            "outputs": {},
+            "error": "An unexpected error occurred while running your code.",
+        }
+    finally:
+        shutil.rmtree(temp_dir_cache)
+        pass
 
     container_config = {
         "image": "python:3.9-slim",
         "command": [
             "sh",
             "-c",
-            "python /app/user_script.py && python /app/execution_script.py",
+            "python /app/execution_script.py",
         ],
         "volumes": {
             temp_dir: {"bind": "/app", "mode": "ro"},
