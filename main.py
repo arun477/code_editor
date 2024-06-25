@@ -12,7 +12,7 @@ import os
 import json
 
 
-DB_NAME = "problems_v2.db"
+DB_NAME = "problems_v5.db"
 PROBLEM_TABLE = "problems"
 
 
@@ -24,7 +24,6 @@ def create_sql_connection():
         yield conn
     finally:
         conn.close()
-
 
 def get_problem(problem_id: str):
     with create_sql_connection() as conn:
@@ -84,7 +83,7 @@ def create_script(code, problem_id):
     test_cases = json.loads(problem["test_cases"])
 
     return templates.get_template("execution_script.jinja2").render(
-        user_code=code, test_cases=test_cases
+        user_code=code, test_cases=test_cases, problem_test_run_code=problem['test_run_code']
     )
 
 
@@ -104,8 +103,11 @@ def run_docker(code, problem_id):
     temp_dir = tempfile.mkdtemp()
 
     executable_script = create_script(code, problem_id)
+    # with open("temp_script.py", "w") as dest:
+    #     dest.write(executable_script)
     with open(os.path.join(temp_dir, "script.py"), "w") as dest:
         dest.write(executable_script)
+
 
     container_config = {
         "image": "python:3.9-slim",

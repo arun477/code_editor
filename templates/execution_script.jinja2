@@ -9,18 +9,19 @@ import traceback
 def run_solution():
     results = []
     for test_case in {{ test_cases | tojson | safe }}:
-        input_data = test_case['input']
-        expected_output = test_case['output']
         error = ""
-        return_output = None
-        valid = None
         logged_output = StringIO()
         logged_error = StringIO()
+
+        input_data = test_case['input']
+        expected_output = test_case['output']
+        return_output = None
+        valid = None
         
         try:
             with redirect_stdout(logged_output), redirect_stderr(logged_error):
-                return_output = Problem().solution(*input_data)
-                valid = return_output == expected_output
+                {{ problem_test_run_code | safe | indent(16) }}
+
         except Exception as e:
             error = traceback.format_exc()
         
