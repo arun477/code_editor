@@ -71,7 +71,7 @@
 
 <body>
     <div id="parent">
-        <h1>Python Coding Problems</h1>
+        <h1>Coding Problems</h1>
         <div class="loader" id="loader"></div>
         <ul id="problems">
         </ul>
@@ -98,7 +98,7 @@
             problems.forEach(problem => {
                 let li = document.createElement('li');
                 let a = document.createElement('a');
-                a.href = 'http://localhost:8000/problem/' + problem.id; // Assuming the link structure
+                a.href = 'http://localhost:8000/problem/' + problem.questionId; // Assuming the link structure
                 a.textContent = problem.title;
                 li.appendChild(a);
                 ul.appendChild(li);

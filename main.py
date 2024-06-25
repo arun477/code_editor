@@ -12,7 +12,7 @@ import os
 import json
 
 
-DB_NAME = "problems_v7.db"
+DB_NAME = "problems_v8.db"
 PROBLEM_TABLE = "problems"
 
 
@@ -26,16 +26,17 @@ def create_sql_connection():
         conn.close()
 
 def get_problem(problem_id: str):
+    print('problem_id', problem_id)
     with create_sql_connection() as conn:
         cursor = conn.cursor()
         return cursor.execute(
-            f"SELECT * FROM {PROBLEM_TABLE} WHERE id = ?", (problem_id)
+            f"SELECT * FROM {PROBLEM_TABLE} WHERE questionId = ?", (problem_id,)
         ).fetchone()
 
 def get_all_problems():
     with create_sql_connection() as conn:
         cursor = conn.cursor()
-        return cursor.execute("SELECT id,title from problems").fetchall()
+        return cursor.execute("SELECT questionId,title from problems").fetchall()
 
 
 app = FastAPI()
@@ -64,7 +65,7 @@ def get_problem_description(problem_id: str):
     problem = get_problem(problem_id)
     if not problem:
         raise HTTPException(status_code=404, detail="not found")
-    return {"description": problem["problem_statement"]}
+    return {"description": problem["content"]}
 
 
 @app.get("/initial_code/{problem_id}")
@@ -72,7 +73,7 @@ async def initial_code(problem_id: str):
     problem = get_problem(problem_id)
     if not problem:
         raise HTTPException(status_code=404, detail="problem not found")
-    return {"code": problem["starting_code"]}
+    return {"code": problem["initial_code"]}
 
 
 @app.get("/get_problem/{problem_id}")

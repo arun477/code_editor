@@ -29,6 +29,7 @@
             border-right: 1px solid #ccc;
             padding: 20px;
             overflow-y: auto;
+            padding-top: 0px;
         }
 
         #editor-container {
@@ -80,12 +81,26 @@
         button:hover {
             background-color: #0056b3;
         }
+        
+        #navbar {
+            padding: 20px;
+            border-bottom: 1px solid lightgray;
+        }
     </style>
 </head>
 
 <body>
+    <div id="navbar">
+    <a href="/">
+     <div>Home</div>
+    </a>
+</div>
     <div id="parent">
-        <div id="descriptions"></div>
+        <div id="descriptions">
+            <h2 id="title"></h2>
+            <div id="content"></div>
+        </div>
+
         <div id="editor-container">
             <div id="editor"></div>
             <div id="controls">
@@ -103,10 +118,10 @@
         let problem_id = window.location.pathname.split('/')[2];
 
         // fetch problem description
-        fetch(`http://localhost:8000/problem_description/${problem_id}`)
+        fetch(`http://localhost:8000/get_problem/${problem_id}`)
             .then(response => response.json())
             .then(data => {
-                addDescription(data.description);
+                addDescription(data.content, data.title);
             })
             .catch(error => console.error('Error fetching problem description:', error));
 
@@ -118,14 +133,15 @@
             })
             .catch(error => console.error('Error fetching initial code:', error));
 
-        function addDescription(description) {
-            let div = document.getElementById('descriptions');
+        function addDescription(description, title) {
+            let div = document.getElementById('content');
             const md = window.markdownit();
             const htmlContent = md.render(description);
-            div.innerHTML = htmlContent;
+            div.innerHTML = description;
+            document.getElementById('title').innerHTML = title
         }
 
-        function createEditor(initialCode) {
+        function createEditor(initialCode, title) {
             require.config({
                 paths: {
                     'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs'
@@ -157,23 +173,23 @@
                     returnOutput.textContent = "";
 
                     fetch('http://localhost:8000/run_code', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({
-                                code: code,
-                                problem_id: problem_id
-                            }),
-                        })
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            code: code,
+                            problem_id: problem_id
+                        }),
+                    })
                         .then(response => response.json())
                         .then(data => {
                             const parsedData = data['outputs']['results'];
                             let returnText = "Test Results:\n";
                             let allValid = true;
-                            printOutput.textContent =  "";
+                            printOutput.textContent = "";
                             if (data.error) {
-                                returnOutput.textContent =  data.error || "";
+                                returnOutput.textContent = data.error || "";
                                 returnOutput.classList.add("invalid-output");
                                 returnOutput.classList.remove("valid-output");
                                 return;
