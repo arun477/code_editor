@@ -12,7 +12,7 @@ import os
 import json
 
 
-DB_NAME = "problems_v6.db"
+DB_NAME = "problems_v7.db"
 PROBLEM_TABLE = "problems"
 
 
