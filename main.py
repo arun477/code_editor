@@ -12,10 +12,8 @@ import os
 import json
 import shutil
 
-
 DB_NAME = "problems_v8.db"
 PROBLEM_TABLE = "problems"
-
 
 @contextmanager
 def create_sql_connection():
@@ -28,7 +26,6 @@ def create_sql_connection():
 
 
 def get_problem(problem_id: str):
-    print("problem_id", problem_id)
     with create_sql_connection() as conn:
         cursor = conn.cursor()
         return cursor.execute(
@@ -119,10 +116,12 @@ def get_docker_container(container_config):
     try:
         container = client.containers.run(**container_config)
         yield container
+    except Exception as e:
+        print("error in container initialization:", e)
     finally:
         if container:
             container.remove(force=True)
-    
+
 
 def create_temp_exection_files(executable_script, user_script):
     temp_dir = tempfile.mkdtemp()
@@ -154,7 +153,7 @@ def run_docker(code, problem_id):
             temp_dir_cache: {"bind": "/app-compile", "mode": "rw"},
         },
         "detach": True,
-        "mem_limit": "100m",
+        "mem_limit": "250m",
         "cpu_quota": 50000,
         "network_mode": "none",
         "read_only": True,
@@ -167,17 +166,16 @@ def run_docker(code, problem_id):
                 logs = container.logs(stdout=True, stderr=True).decode("utf-8")
                 sanitized_error = str(logs)
                 return {"outputs": {}, "error": sanitized_error}
-    except OSError as e:
-        print(e)
+    except OSError:
         return {
             "outputs": {},
-            "error": "Permission denied.",
+            "error": "Permission denied",
         }
     except Exception as e:
         logger.exception("code execution failing", e)
         return {
             "outputs": {},
-            "error": "An unexpected error occurred while running your code.",
+            "error": "An unexpected error occurred while running your code",
         }
     finally:
         shutil.rmtree(temp_dir_cache)
@@ -193,12 +191,8 @@ def run_docker(code, problem_id):
         "volumes": {
             temp_dir: {"bind": "/app", "mode": "rw"},
         },
-        "tmpfs": {
-            "/tmp": "size=10M,exec,mode=777",
-            "/app/results": "size=1M,mode=777",
-        },
         "detach": True,
-        "mem_limit": "100m",
+        "mem_limit": "250m",
         "cpu_quota": 50000,
         "network_mode": "none",
         "read_only": True,
@@ -207,24 +201,27 @@ def run_docker(code, problem_id):
 
     try:
         with get_docker_container(container_config=container_config) as container:
-            container.wait(timeout=30)
+            try:
+                container.wait(timeout=30)
+            except Exception:
+                return {"outputs": {}, "error": "Time Limit Exceeded"}
+
             logs = container.logs(stdout=True, stderr=True).decode("utf-8")
-            # ok error coming from container itself
-            print(dir(container))
-            print('logs', (logs))
-            print('exist code', container.attrs['State']['ExitCode'])
-            print(os.listdir(temp_dir))
+
+            if logs and logs.strip() == "Killed":
+                return {
+                    "outputs": {},
+                    "error": "Memory Limit Exceeded",
+                }
 
             try:
                 output_file_path = os.path.join(temp_dir, "results.json")
                 with open(output_file_path, "r") as file:
                     output = json.loads(file.read())
-                # output = json.loads(logs)
+
                 if "error" in output:
                     return {"outputs": {}, "error": output["error"]}
                 return {"outputs": output, "logs": "", "error": None}
-            except MemoryError as e:
-                print('memory error', e)
             except json.JSONDecodeError:
                 return {
                     "outputs": {},
@@ -234,16 +231,17 @@ def run_docker(code, problem_id):
     except OSError as e:
         return {
             "outputs": {},
-            "error": "Write permission denied.",
+            "error": "Permission denied",
         }
     except Exception as e:
         logger.exception("code execution failing", e)
         return {
             "outputs": {},
-            "error": "An unexpected error occurred while running your code.",
+            "error": "An unexpected error occurred while running your code",
         }
     finally:
         shutil.rmtree(temp_dir)
+
 
 @app.post("/run_code")
 def run_code(client_input: RunCodeInput):
