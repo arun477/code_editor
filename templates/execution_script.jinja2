@@ -1,7 +1,6 @@
 from io import StringIO
 from contextlib import redirect_stdout, redirect_stderr
 import json
-from typing import Any, List, Tuple, Dict, Set, Union, Optional, Callable
 import traceback
 from user_script import *
 
@@ -20,9 +19,9 @@ def run_solution():
         try:
             with redirect_stdout(logged_output), redirect_stderr(logged_error):
                 {{ problem_test_run_code | safe | indent(16) }}
-
+        except OSError as e:
+            error = "Permission denied." 
         except Exception as e:
-            # i want to remove file name from this line
             error = str(e)
         
         results.append({

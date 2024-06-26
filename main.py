@@ -122,7 +122,7 @@ def get_docker_container(container_config):
     finally:
         if container:
             container.remove(force=True)
-
+    
 
 def create_temp_exection_files(executable_script, user_script):
     temp_dir = tempfile.mkdtemp()
@@ -134,7 +134,7 @@ def create_temp_exection_files(executable_script, user_script):
 
     with open(os.path.join(temp_dir, "__init__.py"), "w") as dest:
         dest.write("")
-    
+
     return temp_dir
 
 
@@ -143,9 +143,6 @@ def run_docker(code, problem_id):
 
     temp_dir = create_temp_exection_files(executable_script, user_script)
     temp_dir_cache = tempfile.mkdtemp()
-
-    # with open("temp_script.py", "w") as dest:
-    #     dest.write(executable_script)
 
     with open(os.path.join(temp_dir_cache, "user_script.py"), "w") as dest:
         dest.write(user_script)
@@ -161,6 +158,7 @@ def run_docker(code, problem_id):
         "cpu_quota": 50000,
         "network_mode": "none",
         "read_only": True,
+        "user": "nobody",
     }
     try:
         with get_docker_container(container_config=validation_config) as container:
@@ -169,6 +167,12 @@ def run_docker(code, problem_id):
                 logs = container.logs(stdout=True, stderr=True).decode("utf-8")
                 sanitized_error = str(logs)
                 return {"outputs": {}, "error": sanitized_error}
+    except OSError as e:
+        print(e)
+        return {
+            "outputs": {},
+            "error": "Permission denied.",
+        }
     except Exception as e:
         logger.exception("code execution failing", e)
         return {
@@ -189,11 +193,16 @@ def run_docker(code, problem_id):
         "volumes": {
             temp_dir: {"bind": "/app", "mode": "rw"},
         },
+        "tmpfs": {
+            "/tmp": "size=10M,exec,mode=777",
+            "/app/results": "size=1M,mode=777",
+        },
         "detach": True,
         "mem_limit": "100m",
         "cpu_quota": 50000,
         "network_mode": "none",
-        "read_only": False,
+        "read_only": True,
+        "user": "nobody",
     }
 
     try:
@@ -201,8 +210,11 @@ def run_docker(code, problem_id):
             container.wait(timeout=30)
             logs = container.logs(stdout=True, stderr=True).decode("utf-8")
             # ok error coming from container itself
-            print((logs))
-            
+            print(dir(container))
+            print('logs', (logs))
+            print('exist code', container.attrs['State']['ExitCode'])
+            print(os.listdir(temp_dir))
+
             try:
                 output_file_path = os.path.join(temp_dir, "results.json")
                 with open(output_file_path, "r") as file:
@@ -211,12 +223,19 @@ def run_docker(code, problem_id):
                 if "error" in output:
                     return {"outputs": {}, "error": output["error"]}
                 return {"outputs": output, "logs": "", "error": None}
+            except MemoryError as e:
+                print('memory error', e)
             except json.JSONDecodeError:
                 return {
                     "outputs": {},
                     "logs": logs,
                     "error": "An unexpected error occurred while running your code. Logs",
                 }
+    except OSError as e:
+        return {
+            "outputs": {},
+            "error": "Write permission denied.",
+        }
     except Exception as e:
         logger.exception("code execution failing", e)
         return {
@@ -225,11 +244,6 @@ def run_docker(code, problem_id):
         }
     finally:
         shutil.rmtree(temp_dir)
-
-        # for file in os.listdir(temp_dir):
-        #     os.remove(os.path.join(temp_dir, file))
-        # os.rmdir(temp_dir)
-
 
 @app.post("/run_code")
 def run_code(client_input: RunCodeInput):
