@@ -15,6 +15,7 @@ import shutil
 DB_NAME = "problems_v8.db"
 PROBLEM_TABLE = "problems"
 
+
 @contextmanager
 def create_sql_connection():
     try:
@@ -158,6 +159,8 @@ def run_docker(code, problem_id):
         "network_mode": "none",
         "read_only": True,
         "user": "nobody",
+        "pids_limit": 50,
+        "security_opt": ["no-new-privileges"],
     }
     try:
         with get_docker_container(container_config=validation_config) as container:
@@ -186,10 +189,11 @@ def run_docker(code, problem_id):
         "command": [
             "sh",
             "-c",
-            "python /app/execution_script.py",
+            "python /app/execution_script.py && mv /app/results.json /results/results.json",
         ],
         "volumes": {
-            temp_dir: {"bind": "/app", "mode": "rw"},
+            temp_dir: {"bind": "/app", "mode": "ro"},
+            os.path.join(temp_dir, "results"): {"bind": "/results", "mode": "rw"},
         },
         "detach": True,
         "mem_limit": "250m",
@@ -197,9 +201,13 @@ def run_docker(code, problem_id):
         "network_mode": "none",
         "read_only": True,
         "user": "nobody",
+        "pids_limit": 50,
+        "security_opt": ["no-new-privileges"],
     }
 
     try:
+        os.mkdir(os.path.join(temp_dir, "results"))
+
         with get_docker_container(container_config=container_config) as container:
             try:
                 container.wait(timeout=30)
@@ -215,7 +223,7 @@ def run_docker(code, problem_id):
                 }
 
             try:
-                output_file_path = os.path.join(temp_dir, "results.json")
+                output_file_path = os.path.join(temp_dir, "results", "results.json")
                 with open(output_file_path, "r") as file:
                     output = json.loads(file.read())
 
