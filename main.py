@@ -117,8 +117,8 @@ def get_docker_container(container_config):
     try:
         container = client.containers.run(**container_config)
         yield container
-    except Exception as e:
-        print("error in container initialization:", e)
+    # except Exception as e:
+    #     print("error in container initialization:", e)
     finally:
         if container:
             container.remove(force=True)
@@ -143,6 +143,9 @@ def run_docker(code, problem_id):
 
     temp_dir = create_temp_exection_files(executable_script, user_script)
     temp_dir_cache = tempfile.mkdtemp()
+
+    # with open("./temp.py", "w") as dest:
+    #     dest.write(executable_script)
 
     with open(os.path.join(temp_dir_cache, "user_script.py"), "w") as dest:
         dest.write(user_script)
@@ -185,7 +188,8 @@ def run_docker(code, problem_id):
         pass
 
     container_config = {
-        "image": "python:3.9-slim",
+        # "image": "python:3.9-slim",
+        "image": "custom-python-slim",
         "command": [
             "sh",
             "-c",
@@ -222,6 +226,8 @@ def run_docker(code, problem_id):
                     "error": "Memory Limit Exceeded",
                 }
 
+            print('heere........ s')
+            print('logs:', logs)
             try:
                 output_file_path = os.path.join(temp_dir, "results", "results.json")
                 with open(output_file_path, "r") as file:
@@ -237,6 +243,7 @@ def run_docker(code, problem_id):
                     "error": "An unexpected error occurred while running your code. Logs",
                 }
     except OSError as e:
+        print(e)
         return {
             "outputs": {},
             "error": "Permission denied",
