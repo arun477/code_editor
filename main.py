@@ -93,14 +93,9 @@ class RunCodeInput(BaseModel):
     code: str
 
 
-def create_script(code, problem_id):
-    problem = get_problem(problem_id)
-    if not problem:
-        raise HTTPException(status_code=404, detail="problem not found")
-    test_cases = json.loads(problem["test_cases"])
-
-    executable_script = templates.get_template("execution_script.jinja2").render(
-        test_cases=test_cases, problem_test_run_code=problem["test_run_code"]
+def create_script(code, problem):
+    executable_script = templates.get_template("execution_script_v3.jinja2").render(
+        call_func=problem["call_func"], validation_func=problem["validation_func"], user_code=code
     )
 
     user_script = templates.get_template("user_code_template.jinja2").render(
@@ -117,20 +112,22 @@ def get_docker_container(container_config):
     try:
         container = client.containers.run(**container_config)
         yield container
-    # except Exception as e:
-    #     print("error in container initialization:", e)
     finally:
         if container:
             container.remove(force=True)
 
 
-def create_temp_exection_files(executable_script, user_script):
+def create_temp_exection_files(executable_script, user_script, test_cases):
     temp_dir = tempfile.mkdtemp()
     with open(os.path.join(temp_dir, "execution_script.py"), "w") as dest:
         dest.write(executable_script)
 
     with open(os.path.join(temp_dir, "user_script.py"), "w") as dest:
         dest.write(user_script)
+
+    with open(os.path.join(temp_dir, "test_cases.json"), "w") as dest:
+        test_cases = json.loads(test_cases)
+        dest.write(json.dumps(test_cases))
 
     with open(os.path.join(temp_dir, "__init__.py"), "w") as dest:
         dest.write("")
@@ -139,13 +136,18 @@ def create_temp_exection_files(executable_script, user_script):
 
 
 def run_docker(code, problem_id):
-    executable_script, user_script = create_script(code, problem_id)
+    problem = get_problem(problem_id)
+    if not problem:
+        raise HTTPException(status_code=404, detail="problem not found")
+    
+    problem = get_problem(problem_id)
+    executable_script, user_script = create_script(code, problem)
 
-    temp_dir = create_temp_exection_files(executable_script, user_script)
+    temp_dir = create_temp_exection_files(executable_script, user_script, problem['test_cases'])
     temp_dir_cache = tempfile.mkdtemp()
 
-    # with open("./temp.py", "w") as dest:
-    #     dest.write(executable_script)
+    with open("./temp.py", "w") as dest:
+        dest.write(executable_script)
 
     with open(os.path.join(temp_dir_cache, "user_script.py"), "w") as dest:
         dest.write(user_script)
@@ -188,15 +190,14 @@ def run_docker(code, problem_id):
         pass
 
     container_config = {
-        # "image": "python:3.9-slim",
-        "image": "custom-python-slim",
+        "image": "python:3.9-slim",
         "command": [
             "sh",
             "-c",
             "python /app/execution_script.py && mv /app/results.json /results/results.json",
         ],
         "volumes": {
-            temp_dir: {"bind": "/app", "mode": "ro"},
+            temp_dir: {"bind": "/app", "mode": "rw"},
             os.path.join(temp_dir, "results"): {"bind": "/results", "mode": "rw"},
         },
         "detach": True,
@@ -215,7 +216,8 @@ def run_docker(code, problem_id):
         with get_docker_container(container_config=container_config) as container:
             try:
                 container.wait(timeout=30)
-            except Exception:
+            except Exception as e:
+                print('e...', e)
                 return {"outputs": {}, "error": "Time Limit Exceeded"}
 
             logs = container.logs(stdout=True, stderr=True).decode("utf-8")
@@ -225,9 +227,7 @@ def run_docker(code, problem_id):
                     "outputs": {},
                     "error": "Memory Limit Exceeded",
                 }
-
-            print('heere........ s')
-            print('logs:', logs)
+            print("logs:", logs)
             try:
                 output_file_path = os.path.join(temp_dir, "results", "results.json")
                 with open(output_file_path, "r") as file:
@@ -235,6 +235,7 @@ def run_docker(code, problem_id):
 
                 if "error" in output:
                     return {"outputs": {}, "error": output["error"]}
+                print('output:', output)
                 return {"outputs": output, "logs": "", "error": None}
             except json.JSONDecodeError:
                 return {

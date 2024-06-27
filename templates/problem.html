@@ -218,11 +218,11 @@
                                 returnText += `  Output: ${JSON.stringify(result.output)}\n`;
                                 returnText += `  Valid: ${result.valid}\n`;
 
-                                if (result.error) {
-                                    returnText += `  Error: ${result.error}\n`;
+                                if (result.std_err) {
+                                    returnText += `  Error: ${result.std_err}\n`;
                                 }
-                                if (result.std_output) {
-                                    returnText += `  Std Output: ${result.std_output}\n`;
+                                if (result.std_logs) {
+                                    returnText += `  Std Output: ${result.std_logs}\n`;
                                 }
                                 returnText += "\n";
 

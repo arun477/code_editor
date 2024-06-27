@@ -24,20 +24,8 @@ from contextlib import redirect_stdout, redirect_stderr
 from io import StringIO
 import json
 
-
-class Solution:
-    def gcdOfStrings(self, str1: str, str2: str) -> str:
-        # sum([1]* 11 * 10**7)
-        def gcd(a, b):
-            while b:
-                a, b = b, a % b
-            return a
-
-        if str1 + str2 != str2 + str1:
-            return ""
-
-        gcd_len = gcd(len(str1), len(str2))
-        return str1[:gcd_len]
+{# from user_script import * #}
+{{ user_code | safe }}
 
 
 def set_resource_limits(mem_limit_mb, cpu_time_limit_sec):
@@ -64,7 +52,7 @@ def execute(args, kwargs, timeout):
 
     try:
         with redirect_stdout(std_logs), redirect_stderr(std_err):
-            func = Solution().gcdOfStrings
+            func = {{call_func | safe}}
             return_output = func(*args, **kwargs)
     except TimeoutError as e:
         error = "Time Limit Exceeded"
@@ -131,7 +119,7 @@ def code_func(
 
 def validation_func( input_args, input_kwargs, expected_return, return_output):
     valid = None
-    valid = expected_return == return_output
+    {{validation_func | safe}}
     return valid
 
 def run():

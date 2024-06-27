@@ -1,46 +1,95 @@
-import multiprocessing
-import psutil
 import os
 import signal
-import time
-from io import StringIO
-from contextlib import redirect_stdout, redirect_stderr
-import json
-from io import StringIO
-from contextlib import redirect_stdout, redirect_stderr
+import time as time_module
 import json
 import traceback
+import resource
+from io import StringIO
+from contextlib import redirect_stdout, redirect_stderr
+from typing import *
+from string import *
+from re import *
+from datetime import *
+from collections import *
+from heapq import *
+from bisect import *
+from copy import *
+from math import *
+from random import *
+from statistics import *
+from itertools import *
+from functools import *
+from operator import *
+from io import *
+from sys import *
+from json import *
+from builtins import *
+
+import string
+import re
+import datetime
+import collections
+import heapq
+import bisect
+import copy
+import math
+import random
+import statistics
+import itertools
+import functools
+import operator
+import io
+import sys
+import json
+
+
 from user_script import *
-import time
 
-def monitor_process_func(
-    pid, allowed_memory_bytes, start_time, allowed_time_sec, msg_queue
-):
+def log_message(message):
+    print(f"[DEBUG] {time_module.time()}: {message}")
+    with open('/results/debug.log', 'a') as log_file:
+        log_file.write(f"{time_module.time()}: {message}\n")
+
+def set_resource_limits(memory_limit_mb, cpu_time_limit_sec):
+    # Set memory limit
+    soft, hard = resource.getrlimit(resource.RLIMIT_AS)
+    resource.setrlimit(resource.RLIMIT_AS, (memory_limit_mb * 1024 * 1024, hard))
+
+    # Set CPU time limit
+    soft, hard = resource.getrlimit(resource.RLIMIT_CPU)
+    resource.setrlimit(resource.RLIMIT_CPU, (cpu_time_limit_sec, hard))
+
+def execute_with_timeout(func, args, kwargs, timeout):
+    log_message(f"Executing function with timeout {timeout}")
+    start_time = time_module.time()
+    result = None
+    error = None
+
+    def timeout_handler(signum, frame):
+        raise TimeoutError("Execution time limit exceeded")
+
+    # Set the signal handler and a 5-second alarm
+    signal.signal(signal.SIGALRM, timeout_handler)
+    signal.alarm(timeout)
+    
     try:
-        process = psutil.Process(pid)
-        while True:
-            try:
-                time_elapsed = time.time() - start_time
-                if time_elapsed >= allowed_time_sec:
-                    os.kill(pid, signal.SIGTERM)
-                    msg_queue.put(("TimeLimitExceeded", None))
-                    return
-
-                mem_info = process.memory_info()
-                if mem_info.rss >= allowed_memory_bytes:
-                    os.kill(pid, signal.SIGTERM)
-                    msg_queue.put(("MemoryLimitExceeded", None))
-                    return
-
-            except psutil.NoSuchProcess:
-                return
-            time.sleep(0.1)
+        result = func(*args, **kwargs)
     except Exception as e:
-        msg_queue.put(("MonitorException", str(e)))
+        error = e
+        log_message(f"Exception in user code: {str(e)}")
+    finally:
+        signal.alarm(0)  # Disable the alarm
+    
+    execution_time = time_module.time() - start_time
+    log_message(f"Execution completed in {execution_time} seconds")
+    
+    if error:
+        raise error
+    
+    return result
 
-
-def execution_func(test_case, msg_queue):
-    error = ""
+def code_function(test_case, allowed_time_sec=10, allowed_memory_mb=100):
+    log_message(f"Starting code_function with test case: {test_case}")
     logged_output = StringIO()
     logged_error = StringIO()
 
@@ -48,110 +97,69 @@ def execution_func(test_case, msg_queue):
     expected_output = test_case["output"]
     return_output = None
     valid = None
+    error = ""
+
     try:
+        set_resource_limits(allowed_memory_mb, allowed_time_sec)
         with redirect_stdout(logged_output), redirect_stderr(logged_error):
-            return_output = Solution().gcdOfStrings(*input_data)
-            valid = return_output == expected_output
-        msg_queue.put(
-                (
-                    "result",
-                    json.dumps({
-                        "input": input_data,
-                        "expected": expected_output,
-                        "output": return_output,
-                        "valid": valid,
-                        "error": error,
-                        "std_output": logged_output.getvalue().strip(),
-                        "std_error": logged_error.getvalue().strip(),
-                    }),
-                )
+            return_output = execute_with_timeout(
+                Solution().gcdOfStrings,
+                input_data,
+                {},
+                timeout=allowed_time_sec
             )
+        valid = return_output == expected_output
+        log_message(f"Code execution completed. Valid: {valid}")
     except Exception as e:
         error = str(e)
-        msg_queue.put(
-           (
-                "CodeException",
-                json.dums( {
-                    "input": input_data,
-                    "expected": expected_output,
-                    "output": return_output,
-                    "valid": valid,
-                    "error": error,
-                    "std_output": '',
-                    "std_error": '',
-                }),
-            )
-        )
+        log_message(f"Exception in code_function: {error}")
+        traceback.print_exc(file=logged_error)
 
-
-class MemoryLimitExceeded(Exception):
-    pass
-
-
-class TimeLimitExceeded(Exception):
-    pass
-
-
-def execute(test_case, allowed_memory_bytes=1, allowed_time_sec=10, *args, **kwargs):
-    msg_queue = multiprocessing.Queue()
-    start_time = time.time()
-    code_execution_process = multiprocessing.Process(
-        target=execution_func, args=(test_case, args, kwargs, msg_queue)
-    )
-    code_execution_process.start()
-
-    monitor_process = multiprocessing.Process(
-        target=monitor_process_func,
-        args=(
-            code_execution_process.pid,
-            allowed_memory_bytes * 1024 * 1024,
-            start_time,
-            allowed_time_sec,
-            msg_queue,
-        ),
-    )
-    monitor_process.start()
-
-    try:
-        status, msg = msg_queue.get(timeout=allowed_time_sec + 1)
-        if status == "TimeLimitExceeded":
-            raise TimeLimitExceeded("TimeLimitExceeded")
-        if status == "MemoryLimitExceeded":
-            raise MemoryLimitExceeded("MemoryLimitExceeded")
-        elif status == "CodeException":
-            return msg
-        elif status == "MonitorException":
-            raise Exception(msg)
-        return msg
-    except Exception as e:
-        raise TimeoutError(e)
-    finally:
-        code_execution_process.terminate()
-        monitor_process.terminate()
-        code_execution_process.join()
-        monitor_process.join()
-
-
-def code_function(
-    test_case,
-    allowed_memory_bytes=50,
-    allowed_time_sec=10,
-):
-    result = execute(test_case, allowed_memory_bytes, allowed_time_sec)
-    return json.loads(result)
-
+    result = {
+        "input": input_data,
+        "expected": expected_output,
+        "output": return_output,
+        "valid": valid,
+        "error": error,
+        "std_output": logged_output.getvalue().strip(),
+        "std_error": logged_error.getvalue().strip(),
+    }
+    log_message(f"code_function result: {result}")
+    return result
 
 def run_solution():
+    log_message("Starting run_solution")
     results = []
-    for test_case in {{ test_cases | safe }}:
+    for i, test_case in enumerate({{ test_cases | safe }}):
+        log_message(f"Running test case {i+1}")
         try:
-            result = code_function(test_case, allowed_memory_bytes=100, allowed_time_sec=40)
+            result = code_function(test_case, allowed_time_sec=3, allowed_memory_mb=200)
             results.append(result)
         except Exception as e:
-            raise Exception(e)
+            log_message(f"Error running test case {i+1}: {e}")
+            results.append({
+                "input": test_case["input"],
+                "expected": test_case["output"],
+                "output": None,
+                "valid": False,
+                "error": str(e),
+                "std_output": "",
+                "std_error": traceback.format_exc(),
+            })
     
+    log_message("Finished run_solution")
     return {"results": results}
 
 if __name__ == "__main__":
-    with open('/results/results.json', 'w') as dest:
-        dest.write(json.dumps(run_solution()))
+    log_message("Script started")
+    try:
+        solution_results = run_solution()
+        log_message("Writing results to file")
+        with open('/results/results.json', 'w') as dest:
+            json.dump(solution_results, dest)
+        log_message("Results written successfully")
+    except Exception as e:
+        log_message(f"Fatal error: {e}")
+        with open('/results/results.json', 'w') as dest:
+            json.dump({"error": str(e)}, dest)
+    log_message("Script finished")
