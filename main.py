@@ -122,7 +122,7 @@ def create_temp_exection_files(executable_script, user_script, test_cases):
     with open(os.path.join(temp_dir, "execution_script.py"), "w") as dest:
         dest.write(executable_script)
 
-    with open(os.path.join(temp_dir, "user_script.py"), "w") as dest:
+    with open(os.path.join(temp_dir, "solution.py"), "w") as dest:
         dest.write(user_script)
 
     with open(os.path.join(temp_dir, "test_cases.json"), "w") as dest:
@@ -149,12 +149,12 @@ def run_docker(code, problem_id):
     with open("./temp.py", "w") as dest:
         dest.write(executable_script)
 
-    with open(os.path.join(temp_dir_cache, "user_script.py"), "w") as dest:
+    with open(os.path.join(temp_dir_cache, "solution.py"), "w") as dest:
         dest.write(user_script)
 
     validation_config = {
         "image": "python:3.9-slim",
-        "command": ["python", "-m", "py_compile", "/app-compile/user_script.py"],
+        "command": ["python", "-m", "py_compile", "/app-compile/solution.py"],
         "volumes": {
             temp_dir_cache: {"bind": "/app-compile", "mode": "rw"},
         },

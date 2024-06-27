@@ -23,10 +23,11 @@ import signal
 from contextlib import redirect_stdout, redirect_stderr
 from io import StringIO
 import json
-import threading
+import traceback
 
-{# from user_script import * #}
-{{ user_code | safe }}
+
+from solution import *
+{# {{ user_code | safe }} #}
 
 
 def set_resource_limits(mem_limit_mb, cpu_time_limit_sec):
@@ -71,7 +72,19 @@ def execute(args, kwargs, timeout, mem_limit_mb):
     except TimeoutError as e:
         error = "Time Limit Exceeded"
     except Exception as e:
-        error = str(e)
+        child_file = 'solution.py'
+        summary = traceback.StackSummary.extract(traceback.walk_tb(e.__traceback__))
+        filtered_summary = [ele for ele in summary if ele.filename.endswith(child_file)]
+        for ele in filtered_summary:
+            error_message = (
+                f"{e.__class__.__name__}: {e}\n"
+                f"    {ele.line}\n"
+                "    ^\n"
+                f"Line {ele.lineno}  ({ele.filename.split('/')[-1]})\n"
+                "-------------"
+            )
+        error = error_message
+        {# error = traceback.format_exc() #}
     finally:
         signal.alarm(0)
         signal.setitimer(signal.ITIMER_PROF, 0, 0)
