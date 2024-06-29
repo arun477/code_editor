@@ -189,6 +189,7 @@ async def update_problem(problem_id: str, problem_update: ProblemUpdate):
             conn.commit()
             return {"message": "Problem updated successfully"}
         except sqlite3.Error as e:
+            print(e)
             raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 
