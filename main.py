@@ -4,16 +4,18 @@ from fastapi import FastAPI, HTTPException
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
 from fastapi.requests import Request
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 import logging
 import docker
 import tempfile
 import os
 import json
 import shutil
+import ast
 
 DB_NAME = "problems_v8.db"
 PROBLEM_TABLE = "problems"
+
 
 @contextmanager
 def create_sql_connection():
@@ -46,6 +48,7 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 docker_client = docker.from_env()
+
 
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
@@ -83,40 +86,142 @@ def get_problem_route(problem_id: str):
     problem = get_problem(problem_id)
     if not problem:
         raise HTTPException(status_code=404, detail="not found")
-    
-    problem = dict(problem)
-    # temp: this should come from db
-    problem['validation_func'] = """class Validation:
-    def main(solution_class, test_case):
-        valid = False
-        output = None
-        return_value = solution_class().solution(*test_case['input_args'], **test_case['input_kwargs'])
-        if return_value == test_case['expected_return']:
-            valid = True 
-        output = return_value
-        return valid, output"""
 
+    problem = dict(problem)
     return problem
 
-class Problem(BaseModel):
-    questionId : str
-    title : str
-    content : str
-    difficulty : str
-    initial_code : str
-    test_cases : str
-    # query_key : str
-    # call_func : str
-    validation_func : str
 
-@app.post("/admin/edit-problem/{problem_id}")
-def edit_problem():
-    pass
+class ProblemUpdate(BaseModel):
+    title: str
+    content: str
+    initial_code: str
+    validation_func: str
+    test_cases: str
+
+    @field_validator("initial_code")
+    @classmethod
+    def validate_initial_code(cls, v):
+        try:
+            tree = ast.parse(v)
+            classes = [
+                node for node in ast.walk(tree) if isinstance(node, ast.ClassDef)
+            ]
+            if not any(cls.name == "Solution" for cls in classes):
+                raise ValueError("Initial code must contain a Solution class")
+        except SyntaxError:
+            raise ValueError("Invalid Python syntax in initial code")
+        return v
+
+    @field_validator("validation_func")
+    @classmethod
+    def validate_validation_func(cls, v):
+        try:
+            tree = ast.parse(v)
+            classes = [
+                node for node in ast.walk(tree) if isinstance(node, ast.ClassDef)
+            ]
+            if not any(cls.name == "Validation" for cls in classes):
+                raise ValueError("Validation function must contain a Validation class")
+
+            validation_class = next(cls for cls in classes if cls.name == "Validation")
+            methods = [
+                node
+                for node in validation_class.body
+                if isinstance(node, ast.FunctionDef)
+            ]
+            if not any(method.name == "main" for method in methods):
+                raise ValueError("Validation class must contain a 'main' method")
+
+            # Check if the main method returns a tuple
+            main_method = next(method for method in methods if method.name == "main")
+            returns = [
+                node for node in ast.walk(main_method) if isinstance(node, ast.Return)
+            ]
+            if not returns or not isinstance(returns[0].value, ast.Tuple):
+                raise ValueError("The 'main' method must return a tuple")
+
+            if len(returns[0].value.elts) != 2:
+                raise ValueError("The 'main' method")
+        except SyntaxError:
+            raise ValueError("Invalid Python syntax in validation function")
+        return v
+
+    @field_validator("test_cases")
+    @classmethod
+    def validate_test_cases(cls, v):
+        try:
+            cases = json.loads(v)
+            if not isinstance(cases, list) or len(cases) == 0:
+                for case in cases:
+                    if (
+                        not isinstance(case, dict)
+                        or "input" not in case
+                        or "expected" not in case
+                    ):
+                        raise ValueError(
+                            "Each test case must be a dictionary with 'input' and 'expected' keys"
+                        )
+        except json.JSONDecodeError:
+            raise ValueError("Invalid JSON in test cases")
+        return v
+
+
+@app.put("/admin/update-problem/{problem_id}")
+async def update_problem(problem_id: str, problem_update: ProblemUpdate):
+    with create_sql_connection() as conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute(
+                f"""
+                UPDATE {PROBLEM_TABLE}
+                SET title = ?, content = ?, initial_code = ?, validation_func = ?, test_cases = ?
+                WHERE questionId = ?
+                """,
+                (
+                    problem_update.title,
+                    problem_update.content,
+                    problem_update.initial_code,
+                    problem_update.validation_func,
+                    problem_update.test_cases,
+                    problem_id,
+                ),
+            )
+            conn.commit()
+            return {"message": "Problem updated successfully"}
+        except sqlite3.Error as e:
+            raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+
+# @app.put("/admin/update-problem/{problem_id}")
+# async def update_problem(problem_id: str, problem_update: ProblemUpdate):
+#     with create_sql_connection() as conn:
+#         cursor = conn.cursor()
+#         try:
+#             cursor.execute(
+#                 f"""
+#                 UPDATE {PROBLEM_TABLE}
+#                 SET title = ?, content = ?, initial_code = ?, validation_func = ?, test_cases = ?
+#                 WHERE questionId = ?
+#                 """,
+#                 (
+#                     problem_update.title,
+#                     problem_update.content,
+#                     problem_update.initial_code,
+#                     problem_update.validation_func,
+#                     problem_update.test_cases,
+#                     problem_id,
+#                 ),
+#             )
+#             conn.commit()
+#             return {"message": "Problem updated successfully"}
+#         except sqlite3.Error as e:
+#             raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 
 @app.get("/admin/edit-problem/{problem_id}", response_class=HTMLResponse)
 def edit_problem_page(request: Request):
     return templates.TemplateResponse("edit_problem.html", {"request": request})
+
 
 class RunCodeInput(BaseModel):
     problem_id: str
@@ -125,7 +230,9 @@ class RunCodeInput(BaseModel):
 
 def create_script(code, problem):
     executable_script = templates.get_template("execution_script.jinja2").render(
-        call_func=problem["call_func"], validation_func=problem["validation_func"], user_code=code
+        call_func=problem["call_func"],
+        validation_func=problem["validation_func"],
+        user_code=code,
     )
 
     user_script = templates.get_template("user_code_template.jinja2").render(
@@ -169,27 +276,34 @@ def run_docker(code, problem_id):
     problem = get_problem(problem_id)
     if not problem:
         raise HTTPException(status_code=404, detail="problem not found")
-    
+
     problem = get_problem(problem_id)
     executable_script, user_script = create_script(code, problem)
 
-
-    with tempfile.NamedTemporaryFile(mode='w+', suffix='.py', delete=False) as exec_script_file:
+    with tempfile.NamedTemporaryFile(
+        mode="w+", suffix=".py", delete=False
+    ) as exec_script_file:
         exec_script_file.write(executable_script)
         exec_script_path = exec_script_file.name
 
-    with tempfile.NamedTemporaryFile(mode='w+', suffix='.py', delete=False) as user_script_file:
+    with tempfile.NamedTemporaryFile(
+        mode="w+", suffix=".py", delete=False
+    ) as user_script_file:
         user_script_file.write(user_script)
         user_script_path = user_script_file.name
 
-    with tempfile.NamedTemporaryFile(mode='w+', suffix='.json', delete=False) as test_cases_file:
-        test_cases = json.loads(problem['test_cases'])
+    with tempfile.NamedTemporaryFile(
+        mode="w+", suffix=".json", delete=False
+    ) as test_cases_file:
+        test_cases = json.loads(problem["test_cases"])
         json.dump(test_cases, test_cases_file)
         test_cases_path = test_cases_file.name
 
     results_dir = tempfile.mkdtemp()
 
-    temp_dir = create_temp_exection_files(executable_script, user_script, problem['test_cases'])
+    temp_dir = create_temp_exection_files(
+        executable_script, user_script, problem["test_cases"]
+    )
     temp_dir_cache = tempfile.mkdtemp()
 
     with open("./temp.py", "w") as dest:
@@ -263,7 +377,7 @@ def run_docker(code, problem_id):
             try:
                 container.wait(timeout=30)
             except Exception as e:
-                print('e...', e)
+                print("e...", e)
                 return {"outputs": {}, "error": "Time Limit Exceeded"}
 
             logs = container.logs(stdout=True, stderr=True).decode("utf-8")
@@ -281,7 +395,7 @@ def run_docker(code, problem_id):
 
                 if "error" in output:
                     return {"outputs": {}, "error": output["error"]}
-                print('output:', output)
+                print("output:", output)
                 return {"outputs": output, "logs": "", "error": None}
             except json.JSONDecodeError:
                 return {

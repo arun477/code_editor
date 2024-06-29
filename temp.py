@@ -145,7 +145,15 @@ def code_func(
 
 def validation_func( input_args, input_kwargs, expected_return, return_output):
     valid = None
-    valid = expected_return == return_output
+    class Validation:
+    def main(solution_class, test_case):
+        valid = False
+        output = None
+        return_value = solution_class().solution(*test_case['input_args'], **test_case['input_kwargs'])
+        if return_value == test_case['expected_return']:
+            valid = True 
+        output = return_value
+        return valid, output
     return valid
 
 def run():
