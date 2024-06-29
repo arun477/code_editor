@@ -106,7 +106,7 @@ class Problem(BaseModel):
 
 
 @app.get("/admin/edit-problem/{problem_id}", response_class=HTMLResponse)
-def edit_probles(request: Request):
+def edit_problem_page(request: Request):
     return templates.TemplateResponse("edit_problem.html", {"request": request})
         
 
