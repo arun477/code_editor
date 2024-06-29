@@ -308,8 +308,8 @@ def run_docker(code, problem_id):
     )
     temp_dir_cache = tempfile.mkdtemp()
 
-    with open("./temp.py", "w") as dest:
-        dest.write(executable_script)
+    # with open("./temp.py", "w") as dest:
+    #     dest.write(executable_script)
 
     with open(os.path.join(temp_dir_cache, "solution.py"), "w") as dest:
         dest.write(user_script)

@@ -31,7 +31,7 @@ class Validation:
     def main(self, solution_class, test_case):
         valid = False
         output = None
-        return_value = solution_class().mergeAlternately(*test_case['input_args'], **test_case['input_kwargs'])
+        return_value = solution_class().letterCombinations(*test_case['input_args'], **test_case['input_kwargs'])
         if return_value == test_case['expected_return']:
             valid = True 
         output = return_value
