@@ -15,7 +15,6 @@ import shutil
 DB_NAME = "problems_v8.db"
 PROBLEM_TABLE = "problems"
 
-
 @contextmanager
 def create_sql_connection():
     try:
@@ -143,6 +142,22 @@ def run_docker(code, problem_id):
     problem = get_problem(problem_id)
     executable_script, user_script = create_script(code, problem)
 
+
+    with tempfile.NamedTemporaryFile(mode='w+', suffix='.py', delete=False) as exec_script_file:
+        exec_script_file.write(executable_script)
+        exec_script_path = exec_script_file.name
+
+    with tempfile.NamedTemporaryFile(mode='w+', suffix='.py', delete=False) as user_script_file:
+        user_script_file.write(user_script)
+        user_script_path = user_script_file.name
+
+    with tempfile.NamedTemporaryFile(mode='w+', suffix='.json', delete=False) as test_cases_file:
+        test_cases = json.loads(problem['test_cases'])
+        json.dump(test_cases, test_cases_file)
+        test_cases_path = test_cases_file.name
+
+    results_dir = tempfile.mkdtemp()
+
     temp_dir = create_temp_exection_files(executable_script, user_script, problem['test_cases'])
     temp_dir_cache = tempfile.mkdtemp()
 
@@ -197,7 +212,7 @@ def run_docker(code, problem_id):
             "python /app/execution_script.py && mv /app/results.json /results/results.json",
         ],
         "volumes": {
-            temp_dir: {"bind": "/app", "mode": "rw"},
+            temp_dir: {"bind": "/app", "mode": "ro"},
             os.path.join(temp_dir, "results"): {"bind": "/results", "mode": "rw"},
         },
         "detach": True,

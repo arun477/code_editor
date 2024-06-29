@@ -171,7 +171,7 @@ def run():
 if __name__ == "__main__":
     try:
         output = run()
-        with open("/app/results.json", "w") as dest:
+        with open("/results/results.json", "w") as dest:
             json.dump(output, dest)
     except Exception as e:
         print(e)
