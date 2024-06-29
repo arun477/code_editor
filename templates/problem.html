@@ -6,10 +6,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Python Coding Environment</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+
     <style>
         :root {
-            --primary-color: #4a90e2;
-            --secondary-color: #34495e;
+            --primary-color: #0B001B;
+            --secondary-color: #0B001B;
             --background-color: #f5f7fa;
             --text-color: #333;
             --border-color: #e0e4e9;
@@ -29,7 +31,7 @@
         #navbar {
             background-color: white;
             padding: 15px 30px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
         #navbar a {
@@ -95,9 +97,7 @@
             font-weight: 500;
         }
 
-        #run-btn:hover {
-            background-color: #3a7bc8;
-        }
+        #run-btn:hover {}
 
         #print-output {
             background-color: var(--background-color);
@@ -159,6 +159,7 @@
             color: var(--secondary-color);
             margin-top: 0;
         }
+
         #test-cases-container {
             margin-top: 20px;
             border: 1px solid var(--border-color);
@@ -241,12 +242,12 @@
             cursor: pointer;
         }
 
-        #expand-all-btn:hover {
-            background-color: #3a7bc8;
-        }
+        #expand-all-btn:hover {}
 
         /* Markdown content styles */
-        #content h1, #content h2, #content h3 {
+        #content h1,
+        #content h2,
+        #content h3 {
             color: var(--secondary-color);
         }
 
@@ -263,12 +264,18 @@
             border-radius: 5px;
             overflow-x: auto;
         }
+
+        #logo {
+            width: 50px;
+            height: 50px;
+        }
     </style>
 </head>
 
 <body>
     <div id="navbar">
-        <a href="/">Home</a>
+        <a href="/"> <img id="logo" src="http://localhost:8000/assets/logo.png" />
+        </a>
     </div>
     <div id="parent">
         <div id="descriptions">
@@ -282,17 +289,17 @@
             </div>
 
             <div id="output-container">
-        <div id="controls">
-            <button id="run-btn">Run Code</button>
-        </div>
-        <div id="test-cases-container">
-            <div id="summary-bar">
-                <span id="summary-text">Test Results</span>
-                <button id="expand-all-btn">Expand All</button>
+                <div id="controls">
+                    <button id="run-btn">Run Code</button>
+                </div>
+                <div id="test-cases-container">
+                    <div id="summary-bar">
+                        <span id="summary-text">Test Results</span>
+                        <button id="expand-all-btn">Expand All</button>
+                    </div>
+                    <div id="test-cases"></div>
+                </div>
             </div>
-            <div id="test-cases"></div>
-        </div>
-    </div>
         </div>
     </div>
 
@@ -322,15 +329,15 @@
         function addDescription(description, title) {
             let contentDiv = document.getElementById('content');
             let titleElement = document.getElementById('title');
-            
+
             // Render markdown content
             const htmlContent = md.render(description);
             contentDiv.innerHTML = htmlContent;
-            
+
             // Set title
             titleElement.textContent = title;
         }
-       
+
         function createEditor(initialCode) {
             require.config({
                 paths: {
@@ -354,37 +361,37 @@
                 });
 
                 document.getElementById('run-btn').addEventListener('click', function () {
-                let code = editor.getValue();
-                let testCasesContainer = document.getElementById('test-cases');
-                let summaryText = document.getElementById('summary-text');
-                testCasesContainer.innerHTML = "Running...";
-                summaryText.textContent = `Test Results`;
+                    let code = editor.getValue();
+                    let testCasesContainer = document.getElementById('test-cases');
+                    let summaryText = document.getElementById('summary-text');
+                    testCasesContainer.innerHTML = "Running...";
+                    summaryText.textContent = `Test Results`;
 
-                fetch('http://localhost:8000/run_code', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        code: code,
-                        problem_id: problem_id
-                    }),
-                })
-                    .then(response => response.json())
-                    .then(data => {
-                        const parsedData = data['outputs']['results'];
-                        if (data.error) {
-                            testCasesContainer.innerHTML = `<div class="error">${data.error}</div>`;
-                            return;
-                        }
+                    fetch('http://localhost:8000/run_code', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            code: code,
+                            problem_id: problem_id
+                        }),
+                    })
+                        .then(response => response.json())
+                        .then(data => {
+                            const parsedData = data['outputs']['results'];
+                            if (data.error) {
+                                testCasesContainer.innerHTML = `<div class="error">${data.error}</div>`;
+                                return;
+                            }
 
-                        testCasesContainer.innerHTML = '';
-                        let passedTests = 0;
-                        parsedData.forEach((result, index) => {
-                            if (result.valid) passedTests++;
+                            testCasesContainer.innerHTML = '';
+                            let passedTests = 0;
+                            parsedData.forEach((result, index) => {
+                                if (result.valid) passedTests++;
 
-                            const testCase = document.createElement('div');
-                            testCase.innerHTML = `
+                                const testCase = document.createElement('div');
+                                testCase.innerHTML = `
                                 <div class="test-case-summary">
                                     <span class="test-case-number">Test ${index + 1}</span>
                                     <span class="test-case-status ${result.valid ? 'success' : 'error'}">
@@ -399,27 +406,27 @@
                                     ${result.std_err ? `<pre class="error"><strong>Error:</strong> ${result.std_err}</pre>` : ''}
                                 </div>
                             `;
-                            testCasesContainer.appendChild(testCase);
+                                testCasesContainer.appendChild(testCase);
 
-                            testCase.querySelector('.test-case-summary').addEventListener('click', function() {
-                                this.nextElementSibling.style.display = 
-                                    this.nextElementSibling.style.display === 'none' ? 'block' : 'none';
+                                testCase.querySelector('.test-case-summary').addEventListener('click', function () {
+                                    this.nextElementSibling.style.display =
+                                        this.nextElementSibling.style.display === 'none' ? 'block' : 'none';
+                                });
                             });
+
+                            summaryText.textContent = `${passedTests}/${parsedData.length} Test Cases Passed`;
+                        })
+                        .catch((error) => {
+                            console.error('Error:', error);
                         });
+                });
 
-                        summaryText.textContent = `${passedTests}/${parsedData.length} Test Cases Passed`;
-                    })
-                    .catch((error) => {
-                        console.error('Error:', error);
-                    });
-            });
-
-            document.getElementById('expand-all-btn').addEventListener('click', function() {
-                let details = document.querySelectorAll('.test-case-details');
-                let allHidden = Array.from(details).every(d => d.style.display === 'none');
-                details.forEach(d => d.style.display = allHidden ? 'block' : 'none');
-                this.textContent = allHidden ? 'Collapse All' : 'Expand All';
-            });
+                document.getElementById('expand-all-btn').addEventListener('click', function () {
+                    let details = document.querySelectorAll('.test-case-details');
+                    let allHidden = Array.from(details).every(d => d.style.display === 'none');
+                    details.forEach(d => d.style.display = allHidden ? 'block' : 'none');
+                    this.textContent = allHidden ? 'Collapse All' : 'Expand All';
+                });
             });
         }
     </script>

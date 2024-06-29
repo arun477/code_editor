@@ -1,6 +1,7 @@
 import sqlite3
 from contextlib import contextmanager
 from fastapi import FastAPI, HTTPException
+from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
 from fastapi.requests import Request
@@ -43,6 +44,7 @@ def get_all_problems():
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
+app.mount("/assets", StaticFiles(directory="assets"), name="assets")
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)

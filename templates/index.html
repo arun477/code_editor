@@ -6,13 +6,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Python Coding Environment</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+
     <style>
         :root {
-            --primary-color: #4a90e2;
-            --secondary-color: #34495e;
+            --primary-color: #36BA98;
+            --secondary-color: #0B001B;
             --background-color: #f5f7fa;
             --text-color: #333;
             --border-color: #e0e4e9;
+            --success-color: #2ecc71;
+            --error-color: #e74c3c;
         }
 
         body {
@@ -26,13 +30,11 @@
         #navbar {
             background-color: white;
             padding: 15px 30px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
 
         #navbar a {
             color: var(--primary-color);
             text-decoration: none;
-            font-weight: 500;
             font-size: 18px;
         }
 
@@ -40,25 +42,39 @@
             max-width: 800px;
             margin: 40px auto;
             padding: 30px;
-            background-color: white;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
             border-radius: 5px;
+            padding: 30px;
+            overflow-y: auto;
         }
 
         h1 {
             text-align: center;
             margin-bottom: 30px;
             color: var(--secondary-color);
+            
+        }
+        h3 {
+            margin:0px;
+            border: 1px solid var(--border-color);
+            padding:15px;
+            background-color: var(--border-color);
         }
 
         ul {
             list-style-type: none;
             padding: 0;
+            border: 1px solid var(--border-color);
+            margin:0px;
         }
 
         li {
             padding: 15px 0;
             border-bottom: 1px solid var(--border-color);
+            padding: 15px;
+            cursor:pointer;
+        }
+        li:hover {
+            background-color: #f5f7fa;
         }
 
         li:last-child {
@@ -67,13 +83,21 @@
 
         a {
             color: var(--primary-color);
+            color: black;
             text-decoration: none;
-            font-weight: 500;
             transition: color 0.3s;
+            border-bottom: 1px solid var(--border-color);
+            padding: 15px;
+            cursor: pointer;
+            width: 100%
         }
+        
 
         a:hover {
-            color: #3a7bc8;
+            background-color: #f5f7fa;
+        }
+        .icon {
+            color: lightgray;
         }
 
         .loader {
@@ -91,15 +115,22 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        #logo {
+            width: 50px;
+            height: 50px;
+        }
+
     </style>
 </head>
 
 <body>
     <div id="navbar">
-        <a href="/">Home</a>
+        <a href="/">
+        <img id="logo" src="http://localhost:8000/assets/logo.png"/>
+        </a>
     </div>
     <div id="parent">
-        <h1>Coding Problems</h1>
+        <h3>Common Algorithmic Problems</h3>
         <div class="loader" id="loader"></div>
         <ul id="problems">
         </ul>
@@ -125,9 +156,12 @@
             problems.forEach(problem => {
                 let li = document.createElement('li');
                 let a = document.createElement('a');
+                let icon = document.createElement('i')
                 a.href = 'http://localhost:8000/problem/' + problem.questionId;
                 a.textContent = problem.title;
-                li.appendChild(a);
+                icon.className = "fas fa-star icon"
+                li.appendChild(icon);  
+                li.appendChild(a);   
                 ul.appendChild(li);
             });
         }
