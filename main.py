@@ -88,7 +88,13 @@ def get_problem_route(problem_id: str):
     # temp: this should come from db
     problem['validation_func'] = """class Validation:
     def main(solution_class, test_case):
-        pass"""
+        valid = False
+        output = None
+        return_value = solution_class().solution(*test_case['input_args'], **test_case['input_kwargs'])
+        if return_value == test_case['expected_return']:
+            valid = True 
+        output = return_value
+        return valid, output"""
 
     return problem
 
@@ -99,16 +105,18 @@ class Problem(BaseModel):
     difficulty : str
     initial_code : str
     test_cases : str
-    query_key : str
-    test_run_code : str
-    call_func : str
+    # query_key : str
+    # call_func : str
     validation_func : str
+
+@app.post("/admin/edit-problem/{problem_id}")
+def edit_problem():
+    pass
 
 
 @app.get("/admin/edit-problem/{problem_id}", response_class=HTMLResponse)
 def edit_problem_page(request: Request):
     return templates.TemplateResponse("edit_problem.html", {"request": request})
-        
 
 class RunCodeInput(BaseModel):
     problem_id: str

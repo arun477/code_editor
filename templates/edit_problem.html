@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Python Coding Environment</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsoneditor@latest/dist/jsoneditor.min.css">
 
     <style>
         body {
@@ -100,6 +101,7 @@
     </style>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/simplemde/latest/simplemde.min.css">
     <script src="https://cdn.jsdelivr.net/simplemde/latest/simplemde.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsoneditor@latest/dist/jsoneditor.min.js"></script>
 </head>
 
 <body>
@@ -124,10 +126,7 @@
                 <div id="editor"></div>
 
             </div>
-
-
         </div>
-
 
         <h5 id="label">Validation Code</h5>
         <p id="note">This is what the user will be shown before starting their problems.
@@ -143,19 +142,40 @@
 
             </div>
 
-            <div>
-                <div id="controls">
-                    <button id="run-btn">Run</button>
-                </div>
-                <div id="print-output"></div>
-                <div id="return-output"></div>
-            </div>
+
         </div>
+
+        <h5 id="label">Test Cases</h5>
+        <div id="jsoneditor" style="width: 100%; height: 400px;"></div>
+
+
+        <div>
+            <div id="controls">
+                <button id="run-btn">Run</button>
+            </div>
+            <div id="print-output"></div>
+            <div id="return-output"></div>
+        </div>
+
     </div>
 
     <script>
         var simplemde = new SimpleMDE({ element: document.getElementById("content") });
         window.simplemde = simplemde
+    </script>
+
+    <script>
+        // Create the editor
+        const container = document.getElementById("jsoneditor");
+        const options = {
+            mode: 'code'
+        };
+        const editor = new JSONEditor(container, options);
+
+        // Set JSON in the editor
+        const initialJson = [];
+        editor.set(initialJson);
+        window.json_editor = editor
     </script>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/markdown-it/12.3.2/markdown-it.min.js"></script>
@@ -164,7 +184,6 @@
     <script>
         let params = window.location.pathname.split('/')
         let problem_id = params[params.length - 1];
-        console.log(problem_id)
 
         // fetch problem description
         fetch(`http://localhost:8000/get_problem/${problem_id}`)
@@ -172,6 +191,7 @@
             .then(data => {
                 addDescription(data.content, data.title);
                 createValidationEditor(data.validation_func);
+                window.json_editor.set(JSON.parse(data.test_cases))
             })
             .catch(error => console.error('Error fetching problem description:', error));
 
