@@ -47,7 +47,6 @@ logger = logging.getLogger(__name__)
 
 docker_client = docker.from_env()
 
-
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
@@ -84,8 +83,32 @@ def get_problem_route(problem_id: str):
     problem = get_problem(problem_id)
     if not problem:
         raise HTTPException(status_code=404, detail="not found")
+    
+    problem = dict(problem)
+    # temp: this should come from db
+    problem['validation_func'] = """class Validation:
+    def main(solution_class, test_case):
+        pass"""
+
     return problem
 
+class Problem(BaseModel):
+    questionId : str
+    title : str
+    content : str
+    difficulty : str
+    initial_code : str
+    test_cases : str
+    query_key : str
+    test_run_code : str
+    call_func : str
+    validation_func : str
+
+
+@app.get("/admin/edit-problem/{problem_id}", response_class=HTMLResponse)
+def edit_probles(request: Request):
+    return templates.TemplateResponse("edit_problem.html", {"request": request})
+        
 
 class RunCodeInput(BaseModel):
     problem_id: str
@@ -93,7 +116,7 @@ class RunCodeInput(BaseModel):
 
 
 def create_script(code, problem):
-    executable_script = templates.get_template("execution_script_v3.jinja2").render(
+    executable_script = templates.get_template("execution_script.jinja2").render(
         call_func=problem["call_func"], validation_func=problem["validation_func"], user_code=code
     )
 

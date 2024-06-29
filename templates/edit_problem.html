@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Python Coding Environment</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f7f7f7;
+            color: #333;
+            overflow-x: hidden;
+        }
+
+        #label {
+            font-size: 16px;
+            margin-bottom: 10px;
+            margin-top: 10px;
+        }
+
+        #note {
+            font-size: 12px;
+        }
+
+        #title {
+            width: 100%;
+            height: 30px;
+        }
+
+        #parent {
+            padding: 30px;
+        }
+
+        #descriptions {}
+
+        #editor-container {}
+
+        #editor-sub {
+            background-color: #1E1E1E;
+            padding: 20px;
+        }
+
+        #editor,
+        #editor-validation {
+            width: 100%;
+            height: 400px;
+        }
+
+        #controls {
+            margin-top: 10px;
+        }
+
+        #print-output {
+            margin-top: 10px;
+        }
+
+        #return-output {
+            padding: 20px;
+            margin-top: 10px;
+            padding: 10px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            overflow-y: auto;
+            max-height: 300px;
+        }
+
+        .valid-output {
+            border-color: green !important;
+            border: 2px solid #ccc;
+        }
+
+        .invalid-output {
+            border-color: red !important;
+            border: 2px solid #ccc;
+        }
+
+        button {
+            padding: 10px 15px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        #navbar {
+            padding: 20px;
+            border-bottom: 1px solid lightgray;
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/simplemde/latest/simplemde.min.css">
+    <script src="https://cdn.jsdelivr.net/simplemde/latest/simplemde.min.js"></script>
+</head>
+
+<body>
+    <div id="navbar">
+        <a href="/">
+            <div>Home</div>
+        </a>
+    </div>
+    <div id="parent">
+        <div id="descriptions">
+            <h5 id="label">Title</h5>
+            <input id="title"></input>
+            <h5 id="label">Description</h5>
+            <textarea id="content"></textarea>
+        </div>
+
+        <h5 id="label">Initial Code</h5>
+        <p id="note">This is what the user will be shown before starting their problems. The system will pass the
+            Solution class to the Validation class during execution.</p>
+        <div id="editor-container">
+            <div id="editor-sub">
+                <div id="editor"></div>
+
+            </div>
+
+
+        </div>
+
+
+        <h5 id="label">Validation Code</h5>
+        <p id="note">This is what the user will be shown before starting their problems.
+            Solution and Validation classes are a must.
+            The system will pass the Solution class to the Validation class during execution.
+            The Validation class should return a tuple.
+            The first element of the tuple should be a boolean indicating whether the test case passed or not,
+            and the second element should be the return value, if any.</p>
+
+        <div id="editor-container">
+            <div id="editor-sub">
+                <div id="editor-validation"></div>
+
+            </div>
+
+            <div>
+                <div id="controls">
+                    <button id="run-btn">Run</button>
+                </div>
+                <div id="print-output"></div>
+                <div id="return-output"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        var simplemde = new SimpleMDE({ element: document.getElementById("content") });
+        window.simplemde = simplemde
+    </script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/markdown-it/12.3.2/markdown-it.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs/loader.min.js"></script>
+
+    <script>
+        let params = window.location.pathname.split('/')
+        let problem_id = params[params.length - 1];
+        console.log(problem_id)
+
+        // fetch problem description
+        fetch(`http://localhost:8000/get_problem/${problem_id}`)
+            .then(response => response.json())
+            .then(data => {
+                addDescription(data.content, data.title);
+                createValidationEditor(data.validation_func);
+            })
+            .catch(error => console.error('Error fetching problem description:', error));
+
+        // fetch initial code from backend
+        fetch(`http://localhost:8000/initial_code/${problem_id}`)
+            .then(response => response.json())
+            .then(data => {
+                createEditor(data.code);
+
+            })
+            .catch(error => console.error('Error fetching initial code:', error));
+
+        function addDescription(description, title) {
+            document.getElementById('title').value = title
+            simplemde.value(description);
+
+        }
+        function createValidationEditor(initialCode, title) {
+            require.config({
+                paths: {
+                    'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs'
+                }
+            });
+
+            require(["vs/editor/editor.main"], function () {
+                let editor = monaco.editor.create(document.getElementById('editor-validation'), {
+                    value: initialCode,
+                    language: "python",
+                    theme: "vs-dark",
+                    automaticLayout: true,
+                    minimap: {
+                        enabled: false
+                    },
+                    fontSize: 14,
+                    tabSize: 4,
+                    insertSpaces: true,
+                    wordWrap: 'on'
+                });
+
+                document.getElementById('run-btn').addEventListener('click', function () {
+                    let code = editor.getValue();
+                    let printOutput = document.getElementById('print-output');
+                    let returnOutput = document.getElementById('return-output');
+                    returnOutput.classList.remove("valid-output");
+                    returnOutput.classList.remove("invalid-output");
+                    printOutput.textContent = "Running code...\n";
+                    returnOutput.textContent = "";
+
+                    fetch('http://localhost:8000/run_code', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            code: code,
+                            problem_id: problem_id
+                        }),
+                    })
+                        .then(response => response.json())
+                        .then(data => {
+                            const parsedData = data['outputs']['results'];
+                            let returnText = "Test Results:\n";
+                            let allValid = true;
+                            printOutput.textContent = "";
+                            if (data.error) {
+                                returnOutput.textContent = data.error || "";
+                                returnOutput.classList.add("invalid-output");
+                                returnOutput.classList.remove("valid-output");
+                                return;
+                            }
+
+                            parsedData.forEach((result, index) => {
+                                returnText += `Test ${index + 1}:\n`;
+                                returnText += `  Input: ${JSON.stringify(result.input)}\n`;
+                                returnText += `  Expected: ${JSON.stringify(result.expected)}\n`;
+                                returnText += `  Output: ${JSON.stringify(result.output)}\n`;
+                                returnText += `  Valid: ${result.valid}\n`;
+
+                                if (result.std_err) {
+                                    returnText += `  Error: ${result.std_err}\n`;
+                                }
+                                if (result.std_logs) {
+                                    returnText += `  Std Output: ${result.std_logs}\n`;
+                                }
+                                returnText += "\n";
+
+                                if (!result.valid) {
+                                    allValid = false;
+                                }
+                            });
+
+                            returnOutput.textContent = returnText;
+
+                            if (allValid) {
+                                returnOutput.classList.add("valid-output");
+                                returnOutput.classList.remove("invalid-output");
+                            } else {
+                                returnOutput.classList.add("invalid-output");
+                                returnOutput.classList.remove("valid-output");
+                            }
+                        })
+                        .catch((error) => {
+                            printOutput.textContent = "Something went wrong, try again.";
+                            console.error('Error:', error);
+                        });
+                });
+            });
+        }
+
+        function createEditor(initialCode, title) {
+            require.config({
+                paths: {
+                    'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs'
+                }
+            });
+
+            require(["vs/editor/editor.main"], function () {
+                let editor = monaco.editor.create(document.getElementById('editor'), {
+                    value: initialCode,
+                    language: "python",
+                    theme: "vs-dark",
+                    automaticLayout: true,
+                    minimap: {
+                        enabled: false
+                    },
+                    fontSize: 14,
+                    tabSize: 4,
+                    insertSpaces: true,
+                    wordWrap: 'on'
+                });
+
+                document.getElementById('run-btn').addEventListener('click', function () {
+                    let code = editor.getValue();
+                    let printOutput = document.getElementById('print-output');
+                    let returnOutput = document.getElementById('return-output');
+                    returnOutput.classList.remove("valid-output");
+                    returnOutput.classList.remove("invalid-output");
+                    printOutput.textContent = "Running code...\n";
+                    returnOutput.textContent = "";
+
+                    fetch('http://localhost:8000/run_code', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            code: code,
+                            problem_id: problem_id
+                        }),
+                    })
+                        .then(response => response.json())
+                        .then(data => {
+                            const parsedData = data['outputs']['results'];
+                            let returnText = "Test Results:\n";
+                            let allValid = true;
+                            printOutput.textContent = "";
+                            if (data.error) {
+                                returnOutput.textContent = data.error || "";
+                                returnOutput.classList.add("invalid-output");
+                                returnOutput.classList.remove("valid-output");
+                                return;
+                            }
+
+                            parsedData.forEach((result, index) => {
+                                returnText += `Test ${index + 1}:\n`;
+                                returnText += `  Input: ${JSON.stringify(result.input)}\n`;
+                                returnText += `  Expected: ${JSON.stringify(result.expected)}\n`;
+                                returnText += `  Output: ${JSON.stringify(result.output)}\n`;
+                                returnText += `  Valid: ${result.valid}\n`;
+
+                                if (result.std_err) {
+                                    returnText += `  Error: ${result.std_err}\n`;
+                                }
+                                if (result.std_logs) {
+                                    returnText += `  Std Output: ${result.std_logs}\n`;
+                                }
+                                returnText += "\n";
+
+                                if (!result.valid) {
+                                    allValid = false;
+                                }
+                            });
+
+                            returnOutput.textContent = returnText;
+
+                            if (allValid) {
+                                returnOutput.classList.add("valid-output");
+                                returnOutput.classList.remove("invalid-output");
+                            } else {
+                                returnOutput.classList.add("invalid-output");
+                                returnOutput.classList.remove("valid-output");
+                            }
+                        })
+                        .catch((error) => {
+                            printOutput.textContent = "Something went wrong, try again.";
+                            console.error('Error:', error);
+                        });
+                });
+            });
+        }
+    </script>
+</body>
+
+</html>
