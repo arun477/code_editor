@@ -27,15 +27,7 @@ import traceback
 
 from solution import *
 
-class Validation:
-    def main(self, solution_class, test_case):
-        valid = False
-        output = None
-        return_value = solution_class().mergeAlternately(*test_case['input_args'], **test_case['input_kwargs'])
-        if return_value == test_case['expected_return']:
-            valid = True 
-        output = return_value
-        return valid, output
+{{validation_func | safe}}
 
 def set_resource_limits(mem_limit_mb, cpu_time_limit_sec):
     _, hard = resource.getrlimit(resource.RLIMIT_AS)

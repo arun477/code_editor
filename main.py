@@ -229,7 +229,7 @@ class RunCodeInput(BaseModel):
 
 
 def create_script(code, problem):
-    executable_script = templates.get_template("execution_script.jinja2").render(
+    executable_script = templates.get_template("execution_script_v2.jinja2").render(
         call_func=problem["call_func"],
         validation_func=problem["validation_func"],
         user_code=code,
