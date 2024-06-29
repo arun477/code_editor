@@ -25,10 +25,7 @@ from io import StringIO
 import json
 import traceback
 
-
 from solution import *
-
-
 
 def set_resource_limits(mem_limit_mb, cpu_time_limit_sec):
     _, hard = resource.getrlimit(resource.RLIMIT_AS)
@@ -75,6 +72,7 @@ def execute(args, kwargs, timeout, mem_limit_mb):
         child_file = 'solution.py'
         summary = traceback.StackSummary.extract(traceback.walk_tb(e.__traceback__))
         filtered_summary = [ele for ele in summary if ele.filename.endswith(child_file)]
+        error_message = ''
         for ele in filtered_summary:
             error_message = (
                 f"{e.__class__.__name__}: {e}\n"
@@ -84,7 +82,8 @@ def execute(args, kwargs, timeout, mem_limit_mb):
                 "-------------"
             )
         error = error_message
-        
+        if not error:
+            error = str(e)
     finally:
         signal.alarm(0)
         signal.setitimer(signal.ITIMER_PROF, 0, 0)
