@@ -5,108 +5,270 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Python Coding Environment</title>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --primary-color: #4a90e2;
+            --secondary-color: #34495e;
+            --background-color: #f5f7fa;
+            --text-color: #333;
+            --border-color: #e0e4e9;
+            --success-color: #2ecc71;
+            --error-color: #e74c3c;
+        }
+
         body {
             font-family: 'Roboto', sans-serif;
             margin: 0;
             padding: 0;
-            background-color: #f7f7f7;
-            color: #333;
+            background-color: var(--background-color);
+            color: var(--text-color);
             overflow-x: hidden;
+        }
+
+        #navbar {
+            background-color: white;
+            padding: 15px 30px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        #navbar a {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 18px;
         }
 
         #parent {
             display: flex;
-            flex-wrap: wrap;
-            width: 100vw;
-            height: 100vh;
+            height: calc(100vh - 60px);
         }
 
         #descriptions {
-            flex: 1;
-            min-width: 300px;
-            max-width: 40%;
-            border-right: 1px solid #ccc;
-            padding: 20px;
+            flex: 2;
+            padding: 30px;
             overflow-y: auto;
-            padding-top: 0px;
+            border-right: 1px solid var(--border-color);
+            background-color: white;
         }
 
         #editor-container {
-            flex: 1;
-            min-width: 300px;
-            max-width: 60%;
-
+            flex: 3;
+            display: flex;
+            flex-direction: column;
         }
 
         #editor-sub {
-            background-color: #1E1E1E;
+            flex: 1;
             padding: 20px;
+            background-color: #1E1E1E;
+            height: 50%;
         }
 
         #editor {
             width: 100%;
-            height: 400px;
+            height: 100%;
+
+        }
+
+        #output-container {
+            background-color: white;
+            padding: 20px;
+            border-top: 1px solid var(--border-color);
+            overflow-y: auto;
+            height: 50%;
         }
 
         #controls {
-            margin-top: 10px;
+            margin-bottom: 20px;
         }
 
-        #print-output {
-            margin-top: 10px;
-        }
-
-        #return-output {
-            padding: 20px;
-            margin-top: 10px;
-            padding: 10px;
-            font-family: monospace;
-            white-space: pre-wrap;
-            overflow-y: auto;
-            max-height: 300px;
-        }
-
-        .valid-output {
-            border-color: green !important;
-            border: 2px solid #ccc;
-        }
-
-        .invalid-output {
-            border-color: red !important;
-            border: 2px solid #ccc;
-        }
-
-        button {
-            padding: 10px 15px;
+        #run-btn {
+            padding: 10px 20px;
             cursor: pointer;
-            background-color: #007bff;
-            color: #fff;
+            background-color: var(--primary-color);
+            color: white;
             border: none;
             border-radius: 5px;
             transition: background-color 0.3s;
+            font-size: 16px;
+            font-weight: 500;
         }
 
-        button:hover {
-            background-color: #0056b3;
+        #run-btn:hover {
+            background-color: #3a7bc8;
         }
 
-        #navbar {
-            padding: 20px;
-            border-bottom: 1px solid lightgray;
-             padding: 20px;
-            background-color: #fff;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        #print-output {
+            background-color: var(--background-color);
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 15px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            overflow-y: auto;
+            max-height: 200px;
+            min-height: 50px;
+        }
+
+        .test-case {
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            margin-bottom: 10px;
+            overflow: hidden;
+        }
+
+        .test-case-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 15px;
+            background-color: var(--background-color);
+            cursor: pointer;
+        }
+
+        .test-case-header:hover {
+            background-color: #e6e9ed;
+        }
+
+        .test-case-status {
+            font-weight: bold;
+        }
+
+        .test-case-details {
+            padding: 15px;
+            display: none;
+        }
+
+        .test-case-details pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .success {
+            color: var(--success-color);
+        }
+
+        .error {
+            color: var(--error-color);
+        }
+
+        h2 {
+            color: var(--secondary-color);
+            margin-top: 0;
+        }
+        #test-cases-container {
+            margin-top: 20px;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            overflow: hidden;
+            padding: 10px;
+        }
+
+        .test-case-summary {
+            display: flex;
+            padding: 10px;
+            border-bottom: 1px solid var(--border-color);
+            cursor: pointer;
+        }
+
+        .test-case-summary:last-child {
+            border-bottom: none;
+        }
+
+        .test-case-summary:hover {
+            background-color: var(--background-color);
+        }
+
+        .test-case-number {
+            flex: 0 0 80px;
+        }
+
+        .test-case-status {
+            flex: 0 0 80px;
+            font-weight: bold;
+        }
+
+        .test-case-input {
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .test-case-details {
+            display: none;
+            padding: 15px;
+            background-color: var(--background-color);
+            border-top: 1px solid var(--border-color);
+        }
+
+        .success {
+            color: var(--success-color);
+        }
+
+        .error {
+            color: var(--error-color);
+        }
+
+        .test-case-details pre {
+            margin: 5px 0;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        #summary-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background-color: var(--background-color);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        #summary-text {
+            font-weight: bold;
+        }
+
+        #expand-all-btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        #expand-all-btn:hover {
+            background-color: #3a7bc8;
+        }
+
+        /* Markdown content styles */
+        #content h1, #content h2, #content h3 {
+            color: var(--secondary-color);
+        }
+
+        #content code {
+            background-color: var(--background-color);
+            padding: 2px 4px;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+
+        #content pre {
+            background-color: var(--background-color);
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
         }
     </style>
 </head>
 
 <body>
     <div id="navbar">
-        <a href="/">
-            <div>Home</div>
-        </a>
+        <a href="/">Home</a>
     </div>
     <div id="parent">
         <div id="descriptions">
@@ -117,16 +279,20 @@
         <div id="editor-container">
             <div id="editor-sub">
                 <div id="editor"></div>
-
             </div>
 
-            <div style="padding:20px;">
-                <div id="controls">
-                    <button id="run-btn">Run</button>
-                </div>
-                <div id="print-output"></div>
-                <div id="return-output"></div>
+            <div id="output-container">
+        <div id="controls">
+            <button id="run-btn">Run Code</button>
+        </div>
+        <div id="test-cases-container">
+            <div id="summary-bar">
+                <span id="summary-text">Test Results</span>
+                <button id="expand-all-btn">Expand All</button>
             </div>
+            <div id="test-cases"></div>
+        </div>
+    </div>
         </div>
     </div>
 
@@ -135,6 +301,7 @@
 
     <script>
         let problem_id = window.location.pathname.split('/')[2];
+        const md = window.markdownit({ html: true });
 
         // fetch problem description
         fetch(`http://localhost:8000/get_problem/${problem_id}`)
@@ -153,14 +320,18 @@
             .catch(error => console.error('Error fetching initial code:', error));
 
         function addDescription(description, title) {
-            let div = document.getElementById('content');
-            const md = window.markdownit({ html: true });
-            const htmlContent = md.render( description );
-            div.innerHTML = htmlContent;
-            document.getElementById('title').innerHTML = title
+            let contentDiv = document.getElementById('content');
+            let titleElement = document.getElementById('title');
+            
+            // Render markdown content
+            const htmlContent = md.render(description);
+            contentDiv.innerHTML = htmlContent;
+            
+            // Set title
+            titleElement.textContent = title;
         }
        
-        function createEditor(initialCode, title) {
+        function createEditor(initialCode) {
             require.config({
                 paths: {
                     'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs'
@@ -183,72 +354,72 @@
                 });
 
                 document.getElementById('run-btn').addEventListener('click', function () {
-                    let code = editor.getValue();
-                    let printOutput = document.getElementById('print-output');
-                    let returnOutput = document.getElementById('return-output');
-                    returnOutput.classList.remove("valid-output");
-                    returnOutput.classList.remove("invalid-output");
-                    printOutput.textContent = "Running code...\n";
-                    returnOutput.textContent = "";
+                let code = editor.getValue();
+                let testCasesContainer = document.getElementById('test-cases');
+                let summaryText = document.getElementById('summary-text');
+                testCasesContainer.innerHTML = "Running...";
+                summaryText.textContent = `Test Results`;
 
-                    fetch('http://localhost:8000/run_code', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            code: code,
-                            problem_id: problem_id
-                        }),
-                    })
-                        .then(response => response.json())
-                        .then(data => {
-                            const parsedData = data['outputs']['results'];
-                            let returnText = "Test Results:\n";
-                            let allValid = true;
-                            printOutput.textContent = "";
-                            if (data.error) {
-                                returnOutput.textContent = data.error || "";
-                                returnOutput.classList.add("invalid-output");
-                                returnOutput.classList.remove("valid-output");
-                                return;
-                            }
+                fetch('http://localhost:8000/run_code', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        code: code,
+                        problem_id: problem_id
+                    }),
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        const parsedData = data['outputs']['results'];
+                        if (data.error) {
+                            testCasesContainer.innerHTML = `<div class="error">${data.error}</div>`;
+                            return;
+                        }
 
-                            parsedData.forEach((result, index) => {
-                                returnText += `Test ${index + 1}:\n`;
-                                returnText += `  Input: ${JSON.stringify(result.input)}\n`;
-                                returnText += `  Expected: ${JSON.stringify(result.expected)}\n`;
-                                returnText += `  Output: ${JSON.stringify(result.output)}\n`;
-                                returnText += `  Valid: ${result.valid}\n`;
+                        testCasesContainer.innerHTML = '';
+                        let passedTests = 0;
+                        parsedData.forEach((result, index) => {
+                            if (result.valid) passedTests++;
 
-                                if (result.std_err) {
-                                    returnText += `  Error: ${result.std_err}\n`;
-                                }
-                                if (result.std_logs) {
-                                    returnText += `  Std Output: ${result.std_logs}\n`;
-                                }
-                                returnText += "\n";
+                            const testCase = document.createElement('div');
+                            testCase.innerHTML = `
+                                <div class="test-case-summary">
+                                    <span class="test-case-number">Test ${index + 1}</span>
+                                    <span class="test-case-status ${result.valid ? 'success' : 'error'}">
+                                        ${result.valid ? 'Passed' : 'Failed'}
+                                    </span>
+                                    <span class="test-case-input">${JSON.stringify(result.input)}</span>
+                                </div>
+                                <div class="test-case-details">
+                                    <pre><strong>Input:</strong> ${JSON.stringify(result.input, null, 2)}</pre>
+                                    <pre><strong>Expected Output:</strong> ${JSON.stringify(result.expected, null, 2)}</pre>
+                                    <pre><strong>Actual Output:</strong> ${JSON.stringify(result.output, null, 2)}</pre>
+                                    ${result.std_err ? `<pre class="error"><strong>Error:</strong> ${result.std_err}</pre>` : ''}
+                                </div>
+                            `;
+                            testCasesContainer.appendChild(testCase);
 
-                                if (!result.valid) {
-                                    allValid = false;
-                                }
+                            testCase.querySelector('.test-case-summary').addEventListener('click', function() {
+                                this.nextElementSibling.style.display = 
+                                    this.nextElementSibling.style.display === 'none' ? 'block' : 'none';
                             });
-
-                            returnOutput.textContent = returnText;
-
-                            if (allValid) {
-                                returnOutput.classList.add("valid-output");
-                                returnOutput.classList.remove("invalid-output");
-                            } else {
-                                returnOutput.classList.add("invalid-output");
-                                returnOutput.classList.remove("valid-output");
-                            }
-                        })
-                        .catch((error) => {
-                            printOutput.textContent = "Something went wrong, try again.";
-                            console.error('Error:', error);
                         });
-                });
+
+                        summaryText.textContent = `${passedTests}/${parsedData.length} Test Cases Passed`;
+                    })
+                    .catch((error) => {
+                        console.error('Error:', error);
+                    });
+            });
+
+            document.getElementById('expand-all-btn').addEventListener('click', function() {
+                let details = document.querySelectorAll('.test-case-details');
+                let allHidden = Array.from(details).every(d => d.style.display === 'none');
+                details.forEach(d => d.style.display = allHidden ? 'block' : 'none');
+                this.textContent = allHidden ? 'Collapse All' : 'Expand All';
+            });
             });
         }
     </script>
