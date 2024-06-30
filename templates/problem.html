@@ -32,8 +32,7 @@
             background-color: white;
             padding: 15px 30px;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            border-bottom:  solid lightgray;
-            
+            border-bottom: 1px solid var(--border-color);
         }
 
         #navbar a {
@@ -72,7 +71,6 @@
         #editor {
             width: 100%;
             height: 100%;
-
         }
 
         #output-container {
@@ -94,12 +92,12 @@
             border: none;
             border-radius: 3px;
             transition: background-color 0.3s;
-            padding: 5px;
-            padding-left: 10px;
-            padding-right: 10px;
+            padding: 10px 15px;
         }
 
-        #run-btn:hover {}
+        #run-btn:hover {
+            background-color: #1a0036;
+        }
 
         #print-output {
             background-color: var(--background-color);
@@ -167,7 +165,6 @@
             border: 1px solid var(--border-color);
             border-radius: 5px;
             overflow: hidden;
-            padding: 10px;
         }
 
         .test-case-summary {
@@ -175,6 +172,7 @@
             padding: 10px;
             border-bottom: 1px solid var(--border-color);
             cursor: pointer;
+            position: relative;
         }
 
         .test-case-summary:last-child {
@@ -201,25 +199,15 @@
             text-overflow: ellipsis;
         }
 
-        .test-case-details {
-            display: none;
-            padding: 15px;
-            background-color: var(--background-color);
-            border-top: 1px solid var(--border-color);
+        .test-case-summary::after {
+            content: '\25B6';
+            position: absolute;
+            right: 10px;
+            transition: transform 0.3s ease;
         }
 
-        .success {
-            color: var(--success-color);
-        }
-
-        .error {
-            color: var(--error-color);
-        }
-
-        .test-case-details pre {
-            margin: 5px 0;
-            white-space: pre-wrap;
-            word-break: break-all;
+        .test-case-summary.expanded::after {
+            transform: rotate(90deg);
         }
 
         #summary-bar {
@@ -244,9 +232,10 @@
             cursor: pointer;
         }
 
-        #expand-all-btn:hover {}
+        #expand-all-btn:hover {
+            background-color: #1a0036;
+        }
 
-        /* Markdown content styles */
         #content h1,
         #content h2,
         #content h3 {
@@ -271,12 +260,28 @@
             width: 50px;
             height: 50px;
         }
+        .test-case-details {
+            padding: 15px;
+            display: none;
+            background-color: var(--background-color);
+            border-top: 1px solid var(--border-color);
+        }
+
+        .test-case-expected {
+            color: #666;
+            font-style: italic;
+        }
+
+        .test-case-actual {
+            font-weight: bold;
+        }
+
     </style>
 </head>
 
 <body>
     <div id="navbar">
-        <a href="/"> <img id="logo" src="http://localhost:8000/assets/logo.png" />
+        <a href="/"> <img id="logo" src="/assets/logo.png" alt="Logo" />
         </a>
     </div>
     <div id="parent">
@@ -309,34 +314,33 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs/loader.min.js"></script>
 
     <script>
-        let problem_id = window.location.pathname.split('/')[2];
+        const problem_id = window.location.pathname.split('/')[2];
         const md = window.markdownit({ html: true });
 
-        // fetch problem description
-        fetch(`http://localhost:8000/get_problem/${problem_id}`)
-            .then(response => response.json())
-            .then(data => {
-                addDescription(data.content, data.title);
-            })
-            .catch(error => console.error('Error fetching problem description:', error));
+        async function fetchData() {
+            try {
+                const [descriptionResponse, initialCodeResponse] = await Promise.all([
+                    fetch(`/get_problem/${problem_id}`),
+                    fetch(`/initial_code/${problem_id}`)
+                ]);
 
-        // fetch initial code from backend
-        fetch(`http://localhost:8000/initial_code/${problem_id}`)
-            .then(response => response.json())
-            .then(data => {
-                createEditor(data.code);
-            })
-            .catch(error => console.error('Error fetching initial code:', error));
+                const descriptionData = await descriptionResponse.json();
+                const initialCodeData = await initialCodeResponse.json();
+
+                addDescription(descriptionData.content, descriptionData.title);
+                createEditor(initialCodeData.code);
+            } catch (error) {
+                console.error('Error fetching data:', error);
+            }
+        }
+
+        fetchData();
 
         function addDescription(description, title) {
-            let contentDiv = document.getElementById('content');
-            let titleElement = document.getElementById('title');
+            const contentDiv = document.getElementById('content');
+            const titleElement = document.getElementById('title');
 
-            // Render markdown content
-            const htmlContent = md.render(description);
-            contentDiv.innerHTML = htmlContent;
-
-            // Set title
+            contentDiv.innerHTML = md.render(description);
             titleElement.textContent = title;
         }
 
@@ -348,88 +352,112 @@
             });
 
             require(["vs/editor/editor.main"], function () {
-                let editor = monaco.editor.create(document.getElementById('editor'), {
+                const editor = monaco.editor.create(document.getElementById('editor'), {
                     value: initialCode,
                     language: "python",
                     theme: "vs-dark",
                     automaticLayout: true,
-                    minimap: {
-                        enabled: false
-                    },
+                    minimap: { enabled: false },
                     fontSize: 14,
                     tabSize: 4,
                     insertSpaces: true,
                     wordWrap: 'on'
                 });
 
-                document.getElementById('run-btn').addEventListener('click', function () {
-                    let code = editor.getValue();
-                    let testCasesContainer = document.getElementById('test-cases');
-                    let summaryText = document.getElementById('summary-text');
-                    testCasesContainer.innerHTML = "Running...";
-                    summaryText.textContent = `Test Results`;
-
-                    fetch('http://localhost:8000/run_code', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            code: code,
-                            problem_id: problem_id
-                        }),
-                    })
-                        .then(response => response.json())
-                        .then(data => {
-                            const parsedData = data['outputs']['results'];
-                            if (data.error) {
-                                testCasesContainer.innerHTML = `<div class="error">${data.error}</div>`;
-                                return;
-                            }
-
-                            testCasesContainer.innerHTML = '';
-                            let passedTests = 0;
-                            parsedData.forEach((result, index) => {
-                                if (result.valid) passedTests++;
-
-                                const testCase = document.createElement('div');
-                                testCase.innerHTML = `
-                                <div class="test-case-summary">
-                                    <span class="test-case-number">Test ${index + 1}</span>
-                                    <span class="test-case-status ${result.valid ? 'success' : 'error'}">
-                                        ${result.valid ? 'Passed' : 'Failed'}
-                                    </span>
-                                    <span class="test-case-input">${JSON.stringify(result.input)}</span>
-                                </div>
-                                <div class="test-case-details">
-                                    <pre><strong>Input:</strong> ${JSON.stringify(result.input, null, 2)}</pre>
-                                    <pre><strong>Expected Output:</strong> ${JSON.stringify(result.expected, null, 2)}</pre>
-                                    <pre><strong>Actual Output:</strong> ${JSON.stringify(result.output, null, 2)}</pre>
-                                    ${result.std_err ? `<pre class="error"><strong>Error:</strong> ${result.std_err}</pre>` : ''}
-                                </div>
-                            `;
-                                testCasesContainer.appendChild(testCase);
-
-                                testCase.querySelector('.test-case-summary').addEventListener('click', function () {
-                                    this.nextElementSibling.style.display =
-                                        this.nextElementSibling.style.display === 'none' ? 'block' : 'none';
-                                });
-                            });
-
-                            summaryText.textContent = `${passedTests}/${parsedData.length} Test Cases Passed`;
-                        })
-                        .catch((error) => {
-                            console.error('Error:', error);
-                        });
-                });
-
-                document.getElementById('expand-all-btn').addEventListener('click', function () {
-                    let details = document.querySelectorAll('.test-case-details');
-                    let allHidden = Array.from(details).every(d => d.style.display === 'none');
-                    details.forEach(d => d.style.display = allHidden ? 'block' : 'none');
-                    this.textContent = allHidden ? 'Collapse All' : 'Expand All';
-                });
+                document.getElementById('run-btn').addEventListener('click', () => runCode(editor));
+                document.getElementById('expand-all-btn').addEventListener('click', toggleAllTestCases);
             });
+        }
+
+        async function runCode(editor) {
+            const testCasesContainer = document.getElementById('test-cases');
+            const summaryText = document.getElementById('summary-text');
+            testCasesContainer.innerHTML = "Running...";
+            summaryText.textContent = "Test Results";
+
+            try {
+                const response = await fetch('/run_code', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code: editor.getValue(), problem_id: problem_id }),
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    testCasesContainer.innerHTML = `<div class="error">${data.error}</div>`;
+                    return;
+                }
+
+                const parsedData = data.outputs.results;
+                testCasesContainer.innerHTML = '';
+                let passedTests = 0;
+
+                parsedData.forEach((result, index) => {
+                    if (result.valid) passedTests++;
+                    const testCase = createTestCaseElement(result, index);
+                    testCasesContainer.appendChild(testCase);
+                });
+
+                summaryText.textContent = `${passedTests}/${parsedData.length} Test Cases Passed`;
+            } catch (error) {
+                console.error('Error:', error);
+                testCasesContainer.innerHTML = `<div class="error">An error occurred while running the code.</div>`;
+            }
+        }
+
+        function createTestCaseElement(result, index) {
+            const testCase = document.createElement('div');
+            testCase.innerHTML = `
+                <div class="test-case-summary">
+                    <span class="test-case-number">Test ${index + 1}</span>
+                    <span class="test-case-status ${result.valid ? 'success' : 'error'}">
+                        ${result.valid ? 'Passed' : 'Failed'}
+                    </span>
+                    <span class="test-case-input">${JSON.stringify(result.input)}</span>
+                </div>
+                <div class="test-case-details">
+                    <pre><strong>Input:</strong> ${JSON.stringify(result.input, null, 2)}</pre>
+                    <pre><strong>Expected Output:</strong> ${JSON.stringify(result.expected, null, 2)}</pre>
+                    <pre><strong>Actual Output:</strong> ${JSON.stringify(result.output, null, 2)}</pre>
+                    ${result.std_err ? `<pre class="error"><strong>Error:</strong> ${result.std_err}</pre>` : ''}
+                </div>
+            `;
+
+            testCase.querySelector('.test-case-summary').addEventListener('click', toggleTestCase);
+            return testCase;
+        }
+
+        function toggleTestCase() {
+            const details = this.nextElementSibling;
+            const isExpanding = details.style.display === 'none' || details.style.display === '';
+
+            details.style.display = isExpanding ? 'block' : 'none';
+            this.classList.toggle('expanded', isExpanding);
+
+            updateExpandAllButton();
+        }
+
+        function toggleAllTestCases() {
+            const expandAllBtn = document.getElementById('expand-all-btn');
+            const isExpanding = expandAllBtn.textContent === 'Expand All';
+            const testCases = document.querySelectorAll('.test-case-summary');
+
+            testCases.forEach(summary => {
+                const details = summary.nextElementSibling;
+                details.style.display = isExpanding ? 'block' : 'none';
+                summary.classList.toggle('expanded', isExpanding);
+            });
+
+            expandAllBtn.textContent = isExpanding ? 'Collapse All' : 'Expand All';
+        }
+
+        function updateExpandAllButton() {
+            const expandAllBtn = document.getElementById('expand-all-btn');
+            const testCases = document.querySelectorAll('.test-case-details');
+            const allExpanded = Array.from(testCases).every(d => d.style.display === 'block');
+
+            expandAllBtn.textContent = allExpanded ? 'Collapse All' : 'Expand All';
         }
     </script>
 </body>

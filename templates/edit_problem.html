@@ -6,29 +6,33 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Problem Editor</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsoneditor@latest/dist/jsoneditor.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/simplemde/latest/simplemde.min.css">
+
     <style>
         :root {
-            --primary-color: #4a90e2;
-            --secondary-color: #34495e;
+            --primary-color: #0B001B;
+            --secondary-color: #0B001B;
             --background-color: #f5f7fa;
             --text-color: #333;
             --border-color: #e0e4e9;
+            --success-color: #2ecc71;
+            --error-color: #e74c3c;
         }
 
         body {
             font-family: 'Roboto', sans-serif;
             margin: 0;
             padding: 0;
-            background-color: var(--background-color);
             color: var(--text-color);
+            overflow-x: hidden;
         }
 
         #navbar {
             background-color: white;
             padding: 15px 30px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border-bottom: 1px solid var(--border-color);
         }
 
         #navbar a {
@@ -42,9 +46,9 @@
             max-width: 1200px;
             margin: 30px auto;
             padding: 30px;
-            background-color: white;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
             border-radius: 8px;
+            background-color: white;
+            border: 1px solid lightgray;
         }
 
         .section {
@@ -70,18 +74,24 @@
             font-size: 16px;
             border: 1px solid var(--border-color);
             border-radius: 4px;
+            margin-bottom: 20px;
         }
 
-        #editor-container,
-        #editor-validation-container {
+        .editor-container {
             border: 1px solid var(--border-color);
             border-radius: 4px;
             overflow: hidden;
             background-color: #1E1E1E;
+            margin-bottom: 20px;
+        }
+
+        .editor {
+            height: 300px;
         }
 
         #jsoneditor {
-            height: 400px;
+            height: 300px;
+            margin-bottom: 20px;
         }
 
         #controls {
@@ -89,19 +99,18 @@
             text-align: left;
         }
 
-        button {
-            padding: 10px 20px;
-            font-size: 16px;
+        #save-btn {
             cursor: pointer;
             background-color: var(--primary-color);
             color: white;
             border: none;
-            border-radius: 4px;
+            border-radius: 3px;
             transition: background-color 0.3s;
+            padding: 10px 15px;
         }
 
-        button:hover {
-            background-color: #3a7bc8;
+        #save-btn:hover {
+            background-color: #1a0036;
         }
 
         #message {
@@ -112,19 +121,29 @@
         }
 
         .success {
-            background-color: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
+            background-color: var(--success-color);
+            color: white;
         }
 
         .error {
-            background-color: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
+            background-color: var(--error-color);
+            color: white;
         }
 
-        .editor {
-            height: 300px;
+        #loading-indicator {
+            display: inline-block;
+            margin-left: 10px;
+            color: var(--primary-color);
+        }
+
+        .CodeMirror {
+            border: 1px solid var(--border-color);
+        }
+
+        #logo {
+            width: 50px;
+            height: 50px;
+            vertical-align: middle;
         }
 
         .error-list {
@@ -139,23 +158,12 @@
         .error-location {
             font-weight: bold;
         }
-
-        #loading-indicator {
-            display: inline-block;
-            margin-left: 10px;
-            color: var(--primary-color);
-        }
-
-        /* SimpleMDE customization */
-        .CodeMirror {
-            border: 1px solid var(--border-color);
-        }
     </style>
 </head>
 
 <body>
     <div id="navbar">
-        <a href="/">Home</a>
+        <a href="/"><img id="logo" src="/assets/logo.png" alt="Logo" /> Home</a>
     </div>
     <div id="parent">
         <div class="section">
@@ -170,16 +178,19 @@
 
         <div class="section">
             <h2 class="section-title">Initial Code</h2>
-            <p class="section-note">This is what the user will see before starting their problem. The system will pass the Solution class to the Validation class during execution.</p>
-            <div id="editor-container">
+            <p class="section-note">This is what the user will see before starting their problem. The system will pass
+                the Solution class to the Validation class during execution.</p>
+            <div class="editor-container">
                 <div id="editor" class="editor"></div>
             </div>
         </div>
 
         <div class="section">
             <h2 class="section-title">Validation Code</h2>
-            <p class="section-note">This code validates the user's solution. Solution and Validation classes are required. The system will pass the Solution class to the Validation class during execution. The Validation class should return a tuple: (boolean indicating pass/fail, return value if any).</p>
-            <div id="editor-validation-container">
+            <p class="section-note">This code validates the user's solution. Solution and Validation classes are
+                required. The system will pass the Solution class to the Validation class during execution. The
+                Validation class should return a tuple: (boolean indicating pass/fail, return value if any).</p>
+            <div class="editor-container">
                 <div id="editor-validation" class="editor"></div>
             </div>
         </div>
@@ -233,7 +244,7 @@
         }
 
         function fetchProblemData() {
-            fetch(`http://localhost:8000/get_problem/${problemId}`)
+            fetch(`/get_problem/${problemId}`)
                 .then(response => response.json())
                 .then(data => {
                     document.getElementById('title').value = data.title || '';
@@ -332,7 +343,7 @@
         }
 
         function updateProblem(updatedProblem) {
-            fetch(`http://localhost:8000/admin/update-problem/${problemId}`, {
+            fetch(`/admin/update-problem/${problemId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(updatedProblem),
@@ -370,7 +381,7 @@
             messageElement.innerHTML = message;
             messageElement.className = type;
             messageElement.scrollIntoView({ behavior: 'smooth' });
-            
+
             // Auto-hide the message after 5 seconds
             setTimeout(() => {
                 messageElement.style.display = 'none';
