@@ -31,12 +31,12 @@
             background-color: white;
             padding: 15px 30px;
             border-bottom: 1px solid lightgray;
-            
         }
 
         #navbar a {
             text-decoration: none;
             font-size: 18px;
+            display: inline-block;
         }
 
         #parent {
@@ -44,7 +44,6 @@
             margin: 40px auto;
             padding: 30px;
             border-radius: 5px;
-            padding: 30px;
             overflow-y: auto;
             margin-top: 0px;
         }
@@ -53,12 +52,12 @@
             text-align: center;
             margin-bottom: 30px;
             color: var(--secondary-color);
-            
         }
+
         h3 {
-            margin:0px;
+            margin: 0px;
             border: 1px solid var(--border-color);
-            padding:15px;
+            padding: 15px;
             background-color: var(--border-color);
         }
 
@@ -66,39 +65,35 @@
             list-style-type: none;
             padding: 0;
             border: 1px solid var(--border-color);
-            margin:0px;
+            margin: 0px;
         }
 
         li {
-            padding: 15px 0;
             border-bottom: 1px solid var(--border-color);
-            padding: 15px;
-            cursor:pointer;
-        }
-        li:hover {
-            background-color: #f5f7fa;
         }
 
         li:last-child {
             border-bottom: none;
         }
 
-        a {
-            color: var(--primary-color);
+        li a {
             color: black;
             text-decoration: none;
-            transition: color 0.3s;
+            transition: background-color 0.3s;
             padding: 15px;
-            cursor: pointer;
-            width: 100%
+            display: flex;
+            align-items: center;
+            width: 100%;
+            box-sizing: border-box;
         }
-        
 
-        a:hover {
+        li a:hover {
             background-color: #f5f7fa;
         }
+
         .icon {
             color: lightgray;
+            margin-right: 10px;
         }
 
         .loader {
@@ -116,6 +111,7 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+
         #logo {
             width: 50px;
             height: 50px;
@@ -127,7 +123,7 @@
 <body>
     <div id="navbar">
         <a href="/">
-        <img id="logo" src="http://localhost:8000/assets/logo.png"/>
+            <img id="logo" src="http://localhost:8000/assets/logo.png" alt="Logo"/>
         </a>
     </div>
     <div id="parent">
@@ -157,12 +153,12 @@
             problems.forEach(problem => {
                 let li = document.createElement('li');
                 let a = document.createElement('a');
-                let icon = document.createElement('i')
+                let icon = document.createElement('i');
                 a.href = 'http://localhost:8000/problem/' + problem.questionId;
-                a.textContent = problem.title;
-                icon.className = "fas fa-star icon"
-                li.appendChild(icon);  
-                li.appendChild(a);   
+                icon.className = "fas fa-star icon";
+                a.appendChild(icon);
+                a.appendChild(document.createTextNode(problem.title));
+                li.appendChild(a);
                 ul.appendChild(li);
             });
         }

@@ -153,6 +153,7 @@
 
         .error {
             color: var(--error-color);
+            padding: 10px;
         }
 
         h2 {
@@ -260,6 +261,7 @@
             width: 50px;
             height: 50px;
         }
+
         .test-case-details {
             padding: 15px;
             display: none;
@@ -275,7 +277,6 @@
         .test-case-actual {
             font-weight: bold;
         }
-
     </style>
 </head>
 
@@ -326,6 +327,7 @@
 
                 const descriptionData = await descriptionResponse.json();
                 const initialCodeData = await initialCodeResponse.json();
+                const testCases = JSON.parse(descriptionData.test_cases)
 
                 addDescription(descriptionData.content, descriptionData.title);
                 createEditor(initialCodeData.code);
@@ -372,7 +374,7 @@
         async function runCode(editor) {
             const testCasesContainer = document.getElementById('test-cases');
             const summaryText = document.getElementById('summary-text');
-            testCasesContainer.innerHTML = "Running...";
+            testCasesContainer.innerHTML = "<div style='padding:10px;'>Running... </div>";
             summaryText.textContent = "Test Results";
 
             try {
@@ -440,23 +442,22 @@
 
         function toggleAllTestCases() {
             const expandAllBtn = document.getElementById('expand-all-btn');
-            const isExpanding = expandAllBtn.textContent === 'Expand All';
             const testCases = document.querySelectorAll('.test-case-summary');
+            const allExpanded = Array.from(testCases).every(summary => summary.classList.contains('expanded'));
 
             testCases.forEach(summary => {
                 const details = summary.nextElementSibling;
-                details.style.display = isExpanding ? 'block' : 'none';
-                summary.classList.toggle('expanded', isExpanding);
+                details.style.display = allExpanded ? 'none' : 'block';
+                summary.classList.toggle('expanded', !allExpanded);
             });
 
-            expandAllBtn.textContent = isExpanding ? 'Collapse All' : 'Expand All';
+            updateExpandAllButton();
         }
 
         function updateExpandAllButton() {
             const expandAllBtn = document.getElementById('expand-all-btn');
-            const testCases = document.querySelectorAll('.test-case-details');
-            const allExpanded = Array.from(testCases).every(d => d.style.display === 'block');
-
+            const testCases = document.querySelectorAll('.test-case-summary');
+            const allExpanded = Array.from(testCases).every(summary => summary.classList.contains('expanded'));
             expandAllBtn.textContent = allExpanded ? 'Collapse All' : 'Expand All';
         }
     </script>
