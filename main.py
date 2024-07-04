@@ -5,7 +5,7 @@ from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 from fastapi.requests import Request
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 import tempfile
 import os
 import json
@@ -13,6 +13,7 @@ import docker
 import logging
 import shutil
 import uvicorn
+import ast
 
 DB_NAME = "problems_v9.db"
 PROBLEM_TABLE = "problems"
@@ -57,6 +58,29 @@ def get_submission_test_cases(problem_id: str):
         ).fetchall()
 
 
+def admin_update_problem(problem_id: str, problem_update):
+    with create_sql_connection() as _db:
+        try:
+            _db.cursor.execute(
+                f"""
+                UPDATE {PROBLEM_TABLE}
+                SET title = ?, content = ?, initial_code = ?, validation_func = ?, test_cases = ?
+                WHERE questionId = ?
+                """,
+                (
+                    problem_update.title,
+                    problem_update.content,
+                    problem_update.initial_code,
+                    problem_update.validation_func,
+                    problem_update.test_cases,
+                    problem_id,
+                ),
+            )
+            _db.conn.commit()
+        except sqlite3.Error as _:
+            raise HTTPException(status_code=500, detail="invalid update data")
+
+
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
 app.mount("/assets", StaticFiles(directory="assets"), name="assets")
@@ -74,6 +98,103 @@ async def root(request: Request):
 @app.get("/problem_page/{problem_id}", response_class=HTMLResponse)
 async def problem_page(request: Request):
     return templates.TemplateResponse("problem.html", {"request": request})
+
+
+class ProblemUpdate(BaseModel):
+    title: str
+    content: str
+    initial_code: str
+    validation_func: str
+    test_cases: str
+
+    @field_validator("initial_code")
+    @classmethod
+    def validate_initial_code(cls, v):
+        try:
+            tree = ast.parse(v)
+            classes = [
+                node for node in ast.walk(tree) if isinstance(node, ast.ClassDef)
+            ]
+            if not any(node.name == "Solution" for node in classes):
+                raise ValueError("initial code must contain 'Solution' class")
+            solution_class = [node for node in classes if node.name == "Solution"][0]
+            solution_methods = [
+                node
+                for node in solution_class.body
+                if isinstance(node, ast.FunctionDef)
+            ]
+            if len(solution_methods) == 0:
+                raise ValueError(
+                    "initial code Solution class must contain atleast one method for the execution"
+                )
+        except SyntaxError:
+            raise ValueError("invalid python syntax in initial code")
+        return v
+
+    @field_validator("validation_func")
+    @classmethod
+    def validate_validation_func(cls, v):
+        try:
+            tree = ast.parse(v)
+            classes = [
+                node for node in ast.walk(tree) if isinstance(node, ast.ClassDef)
+            ]
+            if not any(node.name == "Validation" for node in classes):
+                raise ValueError(
+                    "validation function must contain a 'Validation' class"
+                )
+            validation_class = [node for node in classes if node.name == "Solution"][0]
+            methods = [
+                node
+                for node in validation_class.body
+                if isinstance(node, ast.FunctionDef)
+            ]
+            if not any(method.name == "main" for method in methods):
+                raise ValueError(
+                    "validation code Validation class must contain a 'main' method"
+                )
+            main_method = [method for method in methods if method.name == "main"][0]
+            main_method_returns = [
+                node for node in ast.walk(main_method) if isinstance(node, ast.Return)
+            ]
+            if not main_method_returns or isinstance(
+                main_method_returns[0].value, ast.Tuple
+            ):
+                raise ValueError(
+                    "validation function main method should return a tuple"
+                )
+        except SyntaxError:
+            raise ValueError("invalid python syntax in validation code")
+        return v
+
+    @field_validator("test_cases")
+    @classmethod
+    def validate_test_cases(cls, v):
+        try:
+            cases = json.loads(v)
+            if isinstance(cases, dict):
+                cases = [cases]
+            if isinstance(cases, list) and len(cases) == 0:
+                raise ValueError(
+                    "test cases can't be empty atleast include single test case"
+                )
+            for case in cases:
+                if (
+                    not isinstance(case, dict)
+                    or "input" not in case
+                    or "expected" not in case
+                ):
+                    raise ValueError(
+                        "each test case must me dict and each should have input key for args, expected key for return value."
+                    )
+        except json.JSONDecodeError:
+            raise ValueError("invalid json in test cases")
+        return v
+
+
+@app.put("/admin/update-problem/{problem_id}")
+async def update_proble_route(problem_id: str, problem_update: ProblemUpdate):
+    pass
 
 
 @app.get("/get_problem/{problem_id}")
@@ -250,7 +371,7 @@ def submit_in_docker(code, problem):
     temp_dir = temp_docker_mounting_folder(
         exec_script, solution_script, problem["test_cases"]
     )
-    
+
     failed_validation = run_code_validation(temp_dir)
     if failed_validation:
         remove_temp_dir(temp_dir)
@@ -275,7 +396,9 @@ def submit_in_docker(code, problem):
                 ],
                 user="nobody",
             )
-            output = handle_execution_run(container, temp_dir, is_submission=True)['outputs']['results'][0]
+            output = handle_execution_run(container, temp_dir, is_submission=True)[
+                "outputs"
+            ]["results"][0]
             if output["error"]:
                 error = output["error"]
                 break
