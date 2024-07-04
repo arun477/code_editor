@@ -54,7 +54,7 @@ def get_submission_test_cases(problem_id: str):
         return _db.cursor.execute(
             f"SELECT * FROM {SUBMISSION_TEST_CASE_TABLE} WHERE questionId = ?",
             (problem_id,),
-        )
+        ).fetchall()
 
 
 app = FastAPI()
@@ -152,7 +152,11 @@ class DockerConfig:
                     "python /app/execution_script.py",
                 ]
                 if cmd_on
-                else [],
+                else [
+                    "tail",
+                    "-f",
+                    "/dev/null",
+                ],
                 "volumes": {
                     volume_dir: {"bind": "/app", "mode": "ro"},
                     os.path.join(volume_dir, "results"): {
@@ -187,11 +191,12 @@ def run_code_validation(temp_dir):
     return None
 
 
-def handle_execution_run(container, temp_dir):
-    try:
-        container.wait(timeout=30)
-    except Exception as _:
-        return {"outputs": {}, "error": "time limit exceeded"}
+def handle_execution_run(container, temp_dir, is_submission=False):
+    if not is_submission:
+        try:
+            container.wait(timeout=30)
+        except Exception as _:
+            return {"outputs": {}, "error": "time limit exceeded"}
 
     logs = container.logs(stdout=True, stderr=True).decode("utf-8")
     if logs and logs.strip() == "Killed":
@@ -230,6 +235,7 @@ def run_in_docker(code, problem):
 
     failed_validation = run_code_validation(temp_dir)
     if failed_validation:
+        remove_temp_dir(temp_dir)
         return failed_validation
 
     execution_output = run_user_solution_code(temp_dir)
@@ -239,7 +245,9 @@ def run_in_docker(code, problem):
 
 
 def submit_in_docker(code, problem):
-    submission_test_cases = get_submission_test_cases(problem["questionId"])
+    submission_test_cases = [
+        dict(ele) for ele in get_submission_test_cases(problem["questionId"])
+    ]
     exec_script, solution_script = create_runnable_scripts(code, problem)
     temp_dir = temp_docker_mounting_folder(
         exec_script, solution_script, problem["test_cases"]
@@ -247,28 +255,32 @@ def submit_in_docker(code, problem):
 
     failed_validation = run_code_validation(temp_dir)
     if failed_validation:
+        remove_temp_dir(temp_dir)
         return failed_validation
 
     docker_config = DockerConfig(
         volume_dir=temp_dir, env="execution", cmd_on=False
     ).DOCKER_CONFIG
     output = None
+    error = None
     with get_new_docker_container(config=docker_config) as container:
         passed_test_cases = 0
         for test_case in submission_test_cases:
             with open(os.path.join(temp_dir, "test_cases.json"), "w") as dest:
-                json.dumps([json.loads(test_case["test_case"])], dest)
+                dest.write(json.dumps([json.loads(test_case["test_case"])]))
 
             exit_code, output = container.exec_run(
                 cmd=[
-                    "python",
-                    "/app/execution_script.py",
-                    "/app/test_case.json",
-                    "/results/result.json",
+                    "sh",
+                    "-c",
+                    "python /app/execution_script.py",
                 ],
                 user="nobody",
             )
-            output = handle_execution_run(container, temp_dir)
+            print("first output", output)
+            print("first exit code", exit_code)
+            output = handle_execution_run(container, temp_dir, is_submission=True)
+            print('output')
             if output["error"]:
                 output = {
                     "outputs": {
@@ -276,11 +288,12 @@ def submit_in_docker(code, problem):
                     },
                     "error": "test case failed",
                 }
+                error = ("test case failed",)
                 return
             passed_test_cases = passed_test_cases + 1
     remove_temp_dir(temp_dir)
 
-    return {"output": {passed_test_cases: passed_test_cases}, "error": None}
+    return {"output": {"passed": passed_test_cases}, "error": error}
 
 
 class RunCodeInput(BaseModel):
