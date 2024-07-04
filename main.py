@@ -308,7 +308,7 @@ class SubmissionCodeInput(BaseModel):
     code: str
 
 
-@app.post("/sumbit_code")
+@app.post("/submit_code")
 async def submit_code(submission_input: SubmissionCodeInput):
     problem_id, code = submission_input.problem_id, submission_input.code
     problem = get_problem(problem_id)

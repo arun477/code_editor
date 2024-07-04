@@ -30,9 +30,10 @@
 
         #navbar {
             background-color: white;
-            padding: 15px 30px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            border-bottom: 1px solid var(--border-color);
+            padding: 5px;
+            border-bottom: 1px solid lightgray;
+            padding-left: 10px;
+            padding-right: 10px;
         }
 
         #navbar a {
@@ -83,12 +84,15 @@
 
         #controls {
             margin-bottom: 20px;
+            display: flex;
         }
+
+
 
         #run-btn {
             cursor: pointer;
-            background-color: var(--primary-color);
-            color: white;
+            background-color: lightgray;
+            color: black;
             border: none;
             border-radius: 3px;
             transition: background-color 0.3s;
@@ -96,8 +100,24 @@
         }
 
         #run-btn:hover {
+            background-color: #c3c3c3;
+        }
+
+        #submit-btn {
+            cursor: pointer;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 3px;
+            transition: background-color 0.3s;
+            padding: 10px 15px;
+            margin-left: 10px;
+        }
+
+        #submit-btn:hover {
             background-color: #1a0036;
         }
+
 
         #print-output {
             background-color: var(--background-color);
@@ -170,6 +190,14 @@
             border: 1px solid var(--border-color);
             border-radius: 5px;
             overflow: hidden;
+        }
+
+        #submit-cases-container {
+            margin-top: 20px;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            overflow: hidden;
+            display: none;
         }
 
         .test-case-summary {
@@ -262,8 +290,8 @@
         }
 
         #logo {
-            width: 50px;
-            height: 50px;
+            width: 40px;
+            height: 40px;
         }
 
         .test-case-details {
@@ -302,8 +330,16 @@
 
             <div id="output-container">
                 <div id="controls">
-                    <button id="run-btn">Run Code</button>
+                    <button id="run-btn">Run <i class="fas fa-play icon"></i></button>
+                    <button id="submit-btn">Submit</button>
                 </div>
+                {# <div id="submit-cases-container">
+                    <div id="summary-bar">
+                        <span id="summary-text">Submission Results</span>
+                        <button id="expand-all-btn">Expand All</button>
+                    </div>
+                    <div id="test-cases"></div>
+                </div> #}
                 <div id="test-cases-container">
                     <div id="summary-bar">
                         <span id="summary-text">Test Results</span>
@@ -371,11 +407,71 @@
                 });
 
                 document.getElementById('run-btn').addEventListener('click', () => runCode(editor));
+                document.getElementById('submit-btn').addEventListener('click', () => submitCode(editor));
                 document.getElementById('expand-all-btn').addEventListener('click', toggleAllTestCases);
             });
         }
 
+        async function submitCode(editor) {
+            if (window.codeRunning) {
+                return
+            }
+            window.codeRunning = true;
+            const testCasesContainer = document.getElementById('test-cases');
+            const summaryText = document.getElementById('summary-text');
+            testCasesContainer.innerHTML = "<div style='padding:10px;'>Running... </div>";
+            summaryText.style.color  = 'black'
+            summaryText.textContent = "Submission Results";
+            document.getElementById('test-cases-container').style.display = "block"
+            
+
+            try {
+                const response = await fetch('/submit_code', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code: editor.getValue(), problem_id: problem_id }),
+                });
+                window.codeRunning = false;
+                const data = await response.json();
+                console.log(data)
+                if (data.error) {
+                    testCasesContainer.innerHTML = `<div class="error">${data.error}</div>`;
+                    return;
+                }
+
+                const parsedData = data.output;
+                testCasesContainer.innerHTML = '';
+                let passedTests = parsedData.passed;
+                let total = parsedData.total;
+
+                console.log('logs', data.logs)
+
+                if (data.logs) {
+                    console.log('logs', data.logs)
+                    const testCase = createTestCaseElement(data.logs, 1);
+                    testCasesContainer.appendChild(testCase);
+                }
+
+                summaryText.textContent = `${passedTests}/${total} Passed`;
+                if(passedTests === total){
+                    summaryText.style.color = 'var(--success-color)'
+                    summaryText.textContent = `All Passed!`;
+                } else {
+                    summaryText.style.color = 'var(--error-color)'
+                    
+                }
+            } catch (error) {
+                window.codeRunning = false;
+                console.error('Error:', error);
+                testCasesContainer.innerHTML = `<div class="error">An error occurred while running the code.</div>`;
+            }
+        }
+
         async function runCode(editor) {
+            if (window.codeRunning) {
+                return
+            }
+            window.codeRunning = true;
             const testCasesContainer = document.getElementById('test-cases');
             const summaryText = document.getElementById('summary-text');
             testCasesContainer.innerHTML = "<div style='padding:10px;'>Running... </div>";
@@ -389,11 +485,13 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ code: editor.getValue(), problem_id: problem_id }),
                 });
+                window.codeRunning = false;
 
                 const data = await response.json();
 
                 if (data.error) {
                     testCasesContainer.innerHTML = `<div class="error">${data.error}</div>`;
+
                     return;
                 }
 
@@ -409,6 +507,7 @@
 
                 summaryText.textContent = `${passedTests}/${parsedData.length} Test Cases Passed`;
             } catch (error) {
+                window.codeRunning = false;
                 console.error('Error:', error);
                 testCasesContainer.innerHTML = `<div class="error">An error occurred while running the code.</div>`;
             }
