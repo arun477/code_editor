@@ -49,6 +49,14 @@ def get_all_problems():
         return _db.cursor.execute(f"SELECT * FROM {PROBLEM_TABLE}").fetchall()
 
 
+def get_submission_test_cases(problem_id: str):
+    with create_sql_connection() as _db:
+        return _db.cursor.execute(
+            f"SELECT * FROM {SUBMISSION_TEST_CASE_TABLE} WHERE questionId = ?",
+            (problem_id,),
+        )
+
+
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
 app.mount("/assets", StaticFiles(directory="assets"), name="assets")
@@ -118,7 +126,7 @@ def get_new_docker_container(config):
 
 
 class DockerConfig:
-    def __init__(self, volume_dir, env="validation"):
+    def __init__(self, volume_dir, env="validation", cmd_on=True):
         if env == "validation":
             self.DOCKER_CONFIG = {
                 "image": "python:3.9-slim",
@@ -142,7 +150,9 @@ class DockerConfig:
                     "sh",
                     "-c",
                     "python /app/execution_script.py",
-                ],
+                ]
+                if cmd_on
+                else [],
                 "volumes": {
                     volume_dir: {"bind": "/app", "mode": "ro"},
                     os.path.join(volume_dir, "results"): {
@@ -177,23 +187,28 @@ def run_code_validation(temp_dir):
     return None
 
 
+def handle_execution_run(container, temp_dir):
+    try:
+        container.wait(timeout=30)
+    except Exception as _:
+        return {"outputs": {}, "error": "time limit exceeded"}
+
+    logs = container.logs(stdout=True, stderr=True).decode("utf-8")
+    if logs and logs.strip() == "Killed":
+        return {"outputs": {}, "error": "memory limit exceeded"}
+    print("logs...", logs)
+
+    output_file_path = os.path.join(temp_dir, "results", "results.json")
+    with open(output_file_path, "r") as file:
+        output = json.loads(file.read())
+    return {"outputs": output, "logs": "", "error": output.get("error", None)}
+
+
 def run_user_solution_code(temp_dir):
     docker_config = DockerConfig(volume_dir=temp_dir, env="execution").DOCKER_CONFIG
     try:
         with get_new_docker_container(config=docker_config) as container:
-            try:
-                container.wait(timeout=30)
-            except Exception as _:
-                return {"outputs": {}, "error": "time limit exceeded"}
-            logs = container.logs(stdout=True, stderr=True).decode("utf-8")
-            if logs and logs.strip() == "Killed":
-                return {"outputs": {}, "error": "memory limit exceeded"}
-            print("logs...", logs)
-
-            output_file_path = os.path.join(temp_dir, "results", "results.json")
-            with open(output_file_path, "r") as file:
-                output = json.loads(file.read())
-            return {"outputs": output, "logs": "", "error": output.get("error", None)}
+            return handle_execution_run(container, temp_dir)
     except OSError as _:
         return {"outputs": {}, "error": "permission denied"}
     except Exception as _:
@@ -223,9 +238,69 @@ def run_in_docker(code, problem):
     return execution_output
 
 
+def submit_in_docker(code, problem):
+    submission_test_cases = get_submission_test_cases(problem["questionId"])
+    exec_script, solution_script = create_runnable_scripts(code, problem)
+    temp_dir = temp_docker_mounting_folder(
+        exec_script, solution_script, problem["test_cases"]
+    )
+
+    failed_validation = run_code_validation(temp_dir)
+    if failed_validation:
+        return failed_validation
+
+    docker_config = DockerConfig(
+        volume_dir=temp_dir, env="execution", cmd_on=False
+    ).DOCKER_CONFIG
+    output = None
+    with get_new_docker_container(config=docker_config) as container:
+        passed_test_cases = 0
+        for test_case in submission_test_cases:
+            with open(os.path.join(temp_dir, "test_cases.json"), "w") as dest:
+                json.dumps([json.loads(test_case["test_case"])], dest)
+
+            exit_code, output = container.exec_run(
+                cmd=[
+                    "python",
+                    "/app/execution_script.py",
+                    "/app/test_case.json",
+                    "/results/result.json",
+                ],
+                user="nobody",
+            )
+            output = handle_execution_run(container, temp_dir)
+            if output["error"]:
+                output = {
+                    "outputs": {
+                        "passed": passed_test_cases,
+                    },
+                    "error": "test case failed",
+                }
+                return
+            passed_test_cases = passed_test_cases + 1
+    remove_temp_dir(temp_dir)
+
+    return {"output": {passed_test_cases: passed_test_cases}, "error": None}
+
+
 class RunCodeInput(BaseModel):
     problem_id: str
     code: str
+
+
+class SubmissionCodeInput(BaseModel):
+    problem_id: str
+    code: str
+
+
+@app.post("/sumbit_code")
+async def submit_code(submission_input: SubmissionCodeInput):
+    problem_id, code = submission_input.problem_id, submission_input.code
+    problem = get_problem(problem_id)
+    if not problem:
+        raise HTTPException(status_code=404, detail="invalid problem id")
+    result = submit_in_docker(code, problem)
+    return result or {}
 
 
 @app.post("/run_code")
