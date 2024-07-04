@@ -82,7 +82,7 @@ async def get_all_problems_route():
 
 
 def create_runnable_scripts(code, problem):
-    exec_script = templates.get_template("execution_script_v2.jinja2").render(
+    exec_script = templates.get_template("execution_script.jinja2").render(
         validation_func=problem["validation_func"]
     )
     solution_script = templates.get_template("user_code_template.jinja2").render(

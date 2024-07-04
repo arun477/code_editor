@@ -27,6 +27,8 @@ import traceback
 
 from solution import *
 
+{{validation_func | safe}}
+
 def set_resource_limits(mem_limit_mb, cpu_time_limit_sec):
     _, hard = resource.getrlimit(resource.RLIMIT_AS)
     resource.setrlimit(resource.RLIMIT_AS, (mem_limit_mb * 1024**2, hard))
@@ -35,9 +37,10 @@ def set_resource_limits(mem_limit_mb, cpu_time_limit_sec):
     resource.setrlimit(resource.RLIMIT_CPU, (cpu_time_limit_sec, hard))
 
 
-def execute(args, kwargs, timeout, mem_limit_mb):
+def execute(test_case, timeout, mem_limit_mb):
     start = time_moulde.time()
     return_output = None
+    valid = None
     error = None
     std_logs = StringIO()
     std_err = StringIO()
@@ -62,8 +65,7 @@ def execute(args, kwargs, timeout, mem_limit_mb):
 
     try:
         with redirect_stdout(std_logs), redirect_stderr(std_err):
-            func = {{call_func | safe}}
-            return_output = func(*args, **kwargs)
+            valid, return_output = Validation().main(Solution, test_case)
     except MemoryError as e:
         error = "Memory Limit Exceeded"
     except TimeoutError as e:
@@ -91,6 +93,7 @@ def execute(args, kwargs, timeout, mem_limit_mb):
     end = time_moulde.time()
     time_took = end - start
     return {
+        "valid": valid,
         "return_output": return_output,
         "time_took": time_took,
         "error": error,
@@ -100,7 +103,7 @@ def execute(args, kwargs, timeout, mem_limit_mb):
 
 
 def code_func(
-    validation_func, test_case, allowed_time_sec, allowed_memory_mb
+    test_case, allowed_time_sec, allowed_memory_mb
 ):
     input_args = test_case["input_args"]
     input_kwargs = test_case["input_kwargs"]
@@ -113,10 +116,11 @@ def code_func(
     std_err = None
 
     set_resource_limits(allowed_memory_mb, allowed_time_sec)
-    call_func_return = execute(input_args, input_kwargs, allowed_time_sec, allowed_memory_mb)
+    call_func_return = execute(test_case, allowed_time_sec, allowed_memory_mb)
     std_logs = call_func_return["std_logs"]
     std_err = call_func_return['std_err']
     return_output = call_func_return["return_output"]
+    valid = call_func_return["valid"]
     error = call_func_return['error']
 
     if call_func_return["error"]:
@@ -130,9 +134,6 @@ def code_func(
             "std_err": error or std_err,
         }
     else:
-        valid = validation_func(
-            input_args, input_kwargs, expected_return, return_output
-        )
         return {
             "input": str((input_args, input_kwargs)),
             "valid": valid,
@@ -143,11 +144,6 @@ def code_func(
             "std_err": std_err,
         }
 
-def validation_func( input_args, input_kwargs, expected_return, return_output):
-    valid = None
-    {{validation_func | safe}}
-    return valid
-
 def run():
     with open("/app/test_cases.json", "r") as f:
         test_cases = json.loads(f.read())
@@ -155,7 +151,6 @@ def run():
     results = []
     for _, test_case in enumerate(test_cases):
         output = code_func(
-            validation_func,
             test_case,
             allowed_time_sec=10,
             allowed_memory_mb=100,
