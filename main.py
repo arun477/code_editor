@@ -143,7 +143,9 @@ class ProblemUpdate(BaseModel):
                 raise ValueError(
                     "validation function must contain a 'Validation' class"
                 )
-            validation_class = [node for node in classes if node.name == "Validation"][0]
+            validation_class = [node for node in classes if node.name == "Validation"][
+                0
+            ]
             methods = [
                 node
                 for node in validation_class.body
@@ -157,7 +159,7 @@ class ProblemUpdate(BaseModel):
             main_method_returns = [
                 node for node in ast.walk(main_method) if isinstance(node, ast.Return)
             ]
-            if not main_method_returns or isinstance(
+            if not main_method_returns or not isinstance(
                 main_method_returns[0].value, ast.Tuple
             ):
                 raise ValueError(
@@ -181,24 +183,28 @@ class ProblemUpdate(BaseModel):
             for case in cases:
                 if (
                     not isinstance(case, dict)
-                    or "input" not in case
-                    or "expected" not in case
+                    or "input_args" not in case
+                    or "expected_return" not in case
+                    or "input_kwargs" not in case
                 ):
                     raise ValueError(
-                        "each test case must me dict and each should have input key for args, expected key for return value."
+                        "each test case must me dict and each should have input_args, input_kwargs, expected_return return keys"
                     )
         except json.JSONDecodeError:
             raise ValueError("invalid json in test cases")
         return v
 
+
 @app.put("/admin/update-problem/{problem_id}")
 async def update_problem_route(problem_id: str, problem_update: ProblemUpdate):
     admin_update_problem(problem_id, problem_update)
-    return {'msg': 'ok'}
+    return {"msg": "ok"}
 
-@app.get('/admin/edit-problem/{problem_id}', response_class=HTMLResponse)
-async def admin_edit_problem_route(request:Request):
-    return templates.TemplateResponse('edit_problem.html', {'request': request})
+
+@app.get("/admin/edit-problem/{problem_id}", response_class=HTMLResponse)
+async def admin_edit_problem_route(request: Request):
+    return templates.TemplateResponse("edit_problem.html", {"request": request})
+
 
 @app.get("/get_problem/{problem_id}")
 async def get_problem_route(problem_id: str):
