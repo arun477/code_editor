@@ -143,7 +143,7 @@ class ProblemUpdate(BaseModel):
                 raise ValueError(
                     "validation function must contain a 'Validation' class"
                 )
-            validation_class = [node for node in classes if node.name == "Solution"][0]
+            validation_class = [node for node in classes if node.name == "Validation"][0]
             methods = [
                 node
                 for node in validation_class.body
@@ -198,7 +198,7 @@ async def update_problem_route(problem_id: str, problem_update: ProblemUpdate):
 
 @app.get('/admin/edit-problem/{problem_id}', response_class=HTMLResponse)
 async def admin_edit_problem_route(request:Request):
-    return templates.TemplateResponse('edit_problems.html', {'request': request})
+    return templates.TemplateResponse('edit_problem.html', {'request': request})
 
 @app.get("/get_problem/{problem_id}")
 async def get_problem_route(problem_id: str):
