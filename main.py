@@ -205,7 +205,8 @@ def handle_execution_run(container, temp_dir, is_submission=False):
 
     output_file_path = os.path.join(temp_dir, "results", "results.json")
     with open(output_file_path, "r") as file:
-        output = json.loads(file.read())
+        output = json.loads(file.read())['results'][0]
+        print('outside, output', output)
     return {"outputs": output, "logs": "", "error": output.get("error", None)}
 
 
@@ -252,6 +253,8 @@ def submit_in_docker(code, problem):
     temp_dir = temp_docker_mounting_folder(
         exec_script, solution_script, problem["test_cases"]
     )
+    with open('temp.py', 'w') as dest:
+        dest.write(exec_script)
 
     failed_validation = run_code_validation(temp_dir)
     if failed_validation:
@@ -277,20 +280,20 @@ def submit_in_docker(code, problem):
                 ],
                 user="nobody",
             )
+            print('---------------')
             print("first output", output)
             print("first exit code", exit_code)
             output = handle_execution_run(container, temp_dir, is_submission=True)
             print('output')
+            print('---------------')
             if output["error"]:
-                output = {
-                    "outputs": {
-                        "passed": passed_test_cases,
-                    },
-                    "error": "test case failed",
-                }
-                error = ("test case failed",)
-                return
-            passed_test_cases = passed_test_cases + 1
+                error =  output["error"]
+                break
+            if output.get('outputs') and output['outputs'].get('valid'):
+                passed_test_cases = passed_test_cases + 1
+            else:
+                return {"output": {'passed': passed_test_cases}, 'logs':output}
+
     remove_temp_dir(temp_dir)
 
     return {"output": {"passed": passed_test_cases}, "error": error}
