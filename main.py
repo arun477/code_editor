@@ -191,11 +191,14 @@ class ProblemUpdate(BaseModel):
             raise ValueError("invalid json in test cases")
         return v
 
-
 @app.put("/admin/update-problem/{problem_id}")
-async def update_proble_route(problem_id: str, problem_update: ProblemUpdate):
-    pass
+async def update_problem_route(problem_id: str, problem_update: ProblemUpdate):
+    admin_update_problem(problem_id, problem_update)
+    return {'msg': 'ok'}
 
+@app.get('/admin/edit-problem/{problem_id}', response_class=HTMLResponse)
+async def admin_edit_problem_route(request:Request):
+    return templates.TemplateResponse('edit_problems.html', {'request': request})
 
 @app.get("/get_problem/{problem_id}")
 async def get_problem_route(problem_id: str):
