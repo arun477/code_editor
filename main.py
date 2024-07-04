@@ -188,7 +188,7 @@ class ProblemUpdate(BaseModel):
                     or "input_kwargs" not in case
                 ):
                     raise ValueError(
-                        "each test case must me dict and each should have input_args, input_kwargs, expected_return return keys"
+                        "each test case must be dict and each should have input_args, input_kwargs, expected_return return keys"
                     )
         except json.JSONDecodeError:
             raise ValueError("invalid json in test cases")
