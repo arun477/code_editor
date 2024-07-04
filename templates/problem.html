@@ -155,6 +155,7 @@
             color: var(--error-color);
             padding: 10px;
         }
+
         .status-error {
             color: var(--error-color);
         }
@@ -324,17 +325,16 @@
 
         async function fetchData() {
             try {
-                const [descriptionResponse, initialCodeResponse] = await Promise.all([
+                const [descriptionResponse] = await Promise.all([
                     fetch(`/get_problem/${problem_id}`),
-                    fetch(`/initial_code/${problem_id}`)
                 ]);
 
                 const descriptionData = await descriptionResponse.json();
-                const initialCodeData = await initialCodeResponse.json();
+                const initialCodeData = await descriptionData.initial_code;
                 const testCases = JSON.parse(descriptionData.test_cases)
 
                 addDescription(descriptionData.content, descriptionData.title);
-                createEditor(initialCodeData.code);
+                createEditor(initialCodeData);
             } catch (error) {
                 console.error('Error fetching data:', error);
             }

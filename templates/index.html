@@ -108,22 +108,26 @@
         }
 
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
         }
 
         #logo {
             width: 50px;
             height: 50px;
         }
-
     </style>
 </head>
 
 <body>
     <div id="navbar">
         <a href="/">
-            <img id="logo" src="http://localhost:8000/assets/logo.png" alt="Logo"/>
+            <img id="logo" src="http://localhost:8000/assets/logo.png" alt="Logo" />
         </a>
     </div>
     <div id="parent">
@@ -154,7 +158,7 @@
                 let li = document.createElement('li');
                 let a = document.createElement('a');
                 let icon = document.createElement('i');
-                a.href = 'http://localhost:8000/problem/' + problem.questionId;
+                a.href = 'http://localhost:8000/problem_page/' + problem.questionId;
                 icon.className = "fas fa-star icon";
                 a.appendChild(icon);
                 a.appendChild(document.createTextNode(problem.title));
