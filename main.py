@@ -292,11 +292,11 @@ def submit_in_docker(code, problem):
             if output.get('outputs') and output['outputs'].get('valid'):
                 passed_test_cases = passed_test_cases + 1
             else:
-                return {"output": {'passed': passed_test_cases}, 'logs':output}
+                return {"output": {'passed': passed_test_cases,  'total': len(submission_test_cases)}, 'logs':output}
 
     remove_temp_dir(temp_dir)
 
-    return {"output": {"passed": passed_test_cases}, "error": error}
+    return {"output": {"passed": passed_test_cases, 'total': len(submission_test_cases)}, "error": error}
 
 
 class RunCodeInput(BaseModel):
