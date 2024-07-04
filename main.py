@@ -62,8 +62,8 @@ templates = Jinja2Templates(directory="templates")
 app.mount("/assets", StaticFiles(directory="assets"), name="assets")
 docker_client = docker.from_env()
 
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
+# logging.basicConfig(level=logging.DEBUG)
+# logger = logging.getLogger(__name__)
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -184,7 +184,6 @@ def run_code_validation(temp_dir):
                 logs = container.logs(stdout=True, stderr=True).decode("utf-8")
                 return {"outputs": {}, "error": str(logs)}
     except OSError as _:
-        print("validation error", _)
         return {"outputs": {}, "error": "permission denied"}
     except Exception as _:
         return {"outputs": {}, "error": "an unexpected error occured"}
@@ -201,12 +200,10 @@ def handle_execution_run(container, temp_dir, is_submission=False):
     logs = container.logs(stdout=True, stderr=True).decode("utf-8")
     if logs and logs.strip() == "Killed":
         return {"outputs": {}, "error": "memory limit exceeded"}
-    print("logs...", logs)
 
     output_file_path = os.path.join(temp_dir, "results", "results.json")
     with open(output_file_path, "r") as file:
-        output = json.loads(file.read())['results'][0]
-        print('outside, output', output)
+        output = json.loads(file.read())
     return {"outputs": output, "logs": "", "error": output.get("error", None)}
 
 
@@ -253,9 +250,7 @@ def submit_in_docker(code, problem):
     temp_dir = temp_docker_mounting_folder(
         exec_script, solution_script, problem["test_cases"]
     )
-    with open('temp.py', 'w') as dest:
-        dest.write(exec_script)
-
+    
     failed_validation = run_code_validation(temp_dir)
     if failed_validation:
         remove_temp_dir(temp_dir)
@@ -280,23 +275,27 @@ def submit_in_docker(code, problem):
                 ],
                 user="nobody",
             )
-            print('---------------')
-            print("first output", output)
-            print("first exit code", exit_code)
-            output = handle_execution_run(container, temp_dir, is_submission=True)
-            print('output')
-            print('---------------')
+            output = handle_execution_run(container, temp_dir, is_submission=True)['outputs']['results'][0]
             if output["error"]:
-                error =  output["error"]
+                error = output["error"]
                 break
-            if output.get('outputs') and output['outputs'].get('valid'):
+            if output and output.get("valid"):
                 passed_test_cases = passed_test_cases + 1
             else:
-                return {"output": {'passed': passed_test_cases,  'total': len(submission_test_cases)}, 'logs':output}
+                return {
+                    "output": {
+                        "passed": passed_test_cases,
+                        "total": len(submission_test_cases),
+                    },
+                    "logs": output,
+                }
 
     remove_temp_dir(temp_dir)
 
-    return {"output": {"passed": passed_test_cases, 'total': len(submission_test_cases)}, "error": error}
+    return {
+        "output": {"passed": passed_test_cases, "total": len(submission_test_cases)},
+        "error": error,
+    }
 
 
 class RunCodeInput(BaseModel):
