@@ -83,7 +83,7 @@ async def get_all_problems_route():
 
 def create_runnable_scripts(code, problem):
     exec_script = templates.get_template("execution_script_v2.jinja2").render(
-        validation_func=problem
+        validation_func=problem["validation_func"]
     )
     solution_script = templates.get_template("user_code_template.jinja2").render(
         user_code=code
@@ -141,7 +141,7 @@ class DockerConfig:
                 "command": [
                     "sh",
                     "-c",
-                    "python /app/execution_script.py && mv /app/results.json /results/results.json",
+                    "python /app/execution_script.py",
                 ],
                 "volumes": {
                     volume_dir: {"bind": "/app", "mode": "ro"},
@@ -188,15 +188,13 @@ def run_user_solution_code(temp_dir):
             logs = container.logs(stdout=True, stderr=True).decode("utf-8")
             if logs and logs.strip() == "Killed":
                 return {"outputs": {}, "error": "memory limit exceeded"}
+            print("logs...", logs)
 
             output_file_path = os.path.join(temp_dir, "results", "results.json")
             with open(output_file_path, "r") as file:
                 output = json.loads(file.read())
             return {"outputs": output, "logs": "", "error": output.get("error", None)}
     except OSError as _:
-        print('--------')
-        print('execution error', _)
-        print('--------')
         return {"outputs": {}, "error": "permission denied"}
     except Exception as _:
         return {"outputs": {}, "error": "an unexpected error occured"}
