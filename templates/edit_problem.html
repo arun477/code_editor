@@ -159,6 +159,38 @@
         .error-location {
             font-weight: bold;
         }
+        .jsoneditor {
+            border: 1px solid var(--border-color) !important;
+        }
+
+        .jsoneditor-menu {
+            background-color: var(--primary-color) !important;
+            border-bottom: 1px solid var(--border-color) !important;
+        }
+
+        .ace-jsoneditor .ace_scroller {
+            background-color: white !important;
+        }
+
+        .ace-jsoneditor .ace_text-layer {
+            color: black !important;
+        }
+
+        .ace-jsoneditor .ace_variable {
+            color: black !important;
+        }
+
+        .ace-jsoneditor .ace_string {
+            color: #006000 !important;
+        }
+
+        .ace-jsoneditor .ace_constant.ace_numeric {
+            color: #0000FF !important;
+        }
+
+        .jsoneditor-search {
+            display: none;
+        }
     </style>
 </head>
 
@@ -273,15 +305,23 @@
                     wordWrap: 'on'
                 };
 
-                monacoEditor = monaco.editor.create(document.getElementById('editor'), {
-                    ...commonOptions,
-                    value: initialCode,
-                });
+                if (monacoEditor) {
+                    monacoEditor.setValue(initialCode);
+                } else {
+                    monacoEditor = monaco.editor.create(document.getElementById('editor'), {
+                        ...commonOptions,
+                        value: initialCode,
+                    });
+                }
 
-                monacoValidationEditor = monaco.editor.create(document.getElementById('editor-validation'), {
-                    ...commonOptions,
-                    value: validationCode,
-                });
+                if (monacoValidationEditor) {
+                    monacoValidationEditor.setValue(validationCode);
+                } else {
+                    monacoValidationEditor = monaco.editor.create(document.getElementById('editor-validation'), {
+                        ...commonOptions,
+                        value: validationCode,
+                    });
+                }
             });
         }
 
@@ -357,6 +397,8 @@
                 })
                 .then(data => {
                     showMessage(data.message, 'success');
+                    // Refresh the problem data after successful update
+                    fetchProblemData();
                 })
                 .catch((error) => {
                     console.error('Error:', error);
@@ -381,6 +423,7 @@
             const messageElement = document.getElementById('message');
             messageElement.innerHTML = message;
             messageElement.className = type;
+            messageElement.style.display = 'block';
             messageElement.scrollIntoView({ behavior: 'smooth' });
 
             // Auto-hide the message after 5 seconds

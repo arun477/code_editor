@@ -198,7 +198,7 @@ class ProblemUpdate(BaseModel):
 @app.put("/admin/update-problem/{problem_id}")
 async def update_problem_route(problem_id: str, problem_update: ProblemUpdate):
     admin_update_problem(problem_id, problem_update)
-    return {"msg": "ok"}
+    return {"message": "problem updated successfully"}
 
 
 @app.get("/admin/edit-problem/{problem_id}", response_class=HTMLResponse)
