@@ -333,13 +333,7 @@
                     <button id="run-btn">Run <i class="fas fa-play icon"></i></button>
                     <button id="submit-btn">Submit</button>
                 </div>
-                {# <div id="submit-cases-container">
-                    <div id="summary-bar">
-                        <span id="summary-text">Submission Results</span>
-                        <button id="expand-all-btn">Expand All</button>
-                    </div>
-                    <div id="test-cases"></div>
-                </div> #}
+
                 <div id="test-cases-container">
                     <div id="summary-bar">
                         <span id="summary-text">Test Results</span>
@@ -420,10 +414,10 @@
             const testCasesContainer = document.getElementById('test-cases');
             const summaryText = document.getElementById('summary-text');
             testCasesContainer.innerHTML = "<div style='padding:10px;'>Running... </div>";
-            summaryText.style.color  = 'black'
+            summaryText.style.color = 'black'
             summaryText.textContent = "Submission Results";
             document.getElementById('test-cases-container').style.display = "block"
-            
+
 
             try {
                 const response = await fetch('/submit_code', {
@@ -453,12 +447,12 @@
                 }
 
                 summaryText.textContent = `${passedTests}/${total} Passed`;
-                if(passedTests === total){
+                if (passedTests === total) {
                     summaryText.style.color = 'var(--success-color)'
                     summaryText.textContent = `All Passed!`;
                 } else {
                     summaryText.style.color = 'var(--error-color)'
-                    
+
                 }
             } catch (error) {
                 window.codeRunning = false;

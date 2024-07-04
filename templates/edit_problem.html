@@ -159,6 +159,7 @@
         .error-location {
             font-weight: bold;
         }
+
         .jsoneditor {
             border: 1px solid var(--border-color) !important;
         }
@@ -190,6 +191,30 @@
 
         .jsoneditor-search {
             display: none;
+        }
+
+        .editor-preview-active h1,
+        .editor-preview-active h2,
+        .editor-preview-active h3 {
+            color: var(--secondary-color);
+        }
+
+        .editor-preview-active {
+            padding: 20px;
+        }
+
+        .editor-preview-active code {
+            background-color: var(--background-color);
+            padding: 2px 4px;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+
+        .editor-preview-active pre {
+            background-color: var(--background-color);
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
         }
     </style>
 </head>
@@ -239,15 +264,22 @@
         </div>
         <div id="message"></div>
     </div>
-
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/markdown-it/12.3.2/markdown-it.min.js"></script>
     <script src="https://cdn.jsdelivr.net/simplemde/latest/simplemde.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsoneditor@latest/dist/jsoneditor.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs/loader.min.js"></script>
 
+
+
     <script>
         let problemId, simplemde, jsonEditor, monacoEditor, monacoValidationEditor;
+        const md = window.markdownit({ html: true });
 
         document.addEventListener('DOMContentLoaded', initializeEditors);
+
+        function customMarkdownParser(plainText) {
+            return md.render(plainText)
+        }
 
         function initializeEditors() {
             problemId = window.location.pathname.split('/').pop();
@@ -258,6 +290,9 @@
                     enabled: true,
                     uniqueId: "problemDescription_" + problemId,
                     delay: 1000,
+                },
+                previewRender: function (plainText) {
+                    return customMarkdownParser(plainText);
                 },
                 placeholder: "Enter problem description here...",
             });
