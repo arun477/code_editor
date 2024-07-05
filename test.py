@@ -1,15 +1,25 @@
 import requests
 import time
+import threading
+import concurrent.futures
 
-def download_site(url, session):
+
+thread_local = threading.local() #??
+
+def get_session():
+    if not hasattr(thread_local, 'session'):
+        thread_local.session = requests.Session()
+    return thread_local.session
+
+def download_site(url):
+    session = get_session()
     with session.get(url) as res:
         print(f"content: {len(res.content)} from {url}")
 
 def download_all_sites(sites):
-    with requests.Session() as session:
-        for url in sites:
-          download_site(url, session)
-
+    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as exc:
+        exc.map(download_site, sites)
+  
 if __name__ == '__main__':
     sites = [
          "https://www.jython.org",
