@@ -18,4 +18,4 @@ if __name__ == '__main__':
     start = time.time()
     download_all_sites(sites)
     duration = time.time() - start
-    print('downloaded {len(sites)} in {duration} secs')
+    print(f'downloaded {len(sites)} in {duration} secs')
