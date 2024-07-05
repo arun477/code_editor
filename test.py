@@ -1,27 +1,26 @@
-import queue
-import threading
+import pika
 import time
-import random
 
-order_queue = queue.Queue()
+def receive_msg():
+    conn = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
+    ch = conn.channel()
+    ch.queue_declare(queue='coffee_orders')
 
-def place_order():
-    orders = ['1', '2', '3', '4']
-    while True:
-        order = random.choice(orders)
-        order_queue.put(order)
-        print(f"order placed {order}")
-        time.sleep(random.uniform(0.5, 2))
+    ch2 = conn.channel()
+    ch2.queue_declare(queue='tea_orders')
 
-def process_order():
-    while True:
-        order = order_queue.get()
-        print(f'processing order: {order}')
-        time.sleep(random.uniform(1, 3))
-        print(f'completed order: {order}')
-        order_queue.task_done()
+    def callback(ch, method, properties, body):
+        print(f' [x] received {body}')
+        time.sleep(1)
+        print(' [x] done')
+        ch.basic_ack(delivery_tag=method.delivery_tag)
 
-threading.Thread(target=place_order, daemon=True).start()
-threading.Thread(target=process_order, daemon=True).start()
+    ch2.basic_qos(prefetch_count=1)
+    ch2.basic_consume(queue='tea_orders', on_message_callback=callback)
+    
+    ch.basic_qos(prefetch_count=1)
+    ch.basic_consume(queue='coffee_orders', on_message_callback=callback)
+    print(' [*] waiting for msg, to exit press ctrl+c')
+    ch.start_consuming()
 
-time.sleep(30)
+receive_msg()
