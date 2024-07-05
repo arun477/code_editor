@@ -1,24 +1,18 @@
-import requests
 import time
-import threading
-import concurrent.futures
+import aiohttp
+import asyncio
 
-
-thread_local = threading.local() #??
-
-def get_session():
-    if not hasattr(thread_local, 'session'):
-        thread_local.session = requests.Session()
-    return thread_local.session
-
-def download_site(url):
-    session = get_session()
-    with session.get(url) as res:
+async def download_site(url, session):
+    async with session.get(url) as res:
         print(f"content: {len(res.content)} from {url}")
-
-def download_all_sites(sites):
-    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as exc:
-        exc.map(download_site, sites)
+        
+async def download_all_sites(sites):
+    async with aiohttp.ClientSession() as session:
+        tasks = []
+        for url in sites:
+            task = asyncio.ensure_future(download_site(url, session))
+            tasks.append(task)
+        await asyncio.gather(*tasks,return_exceptions=True)
   
 if __name__ == '__main__':
     sites = [
@@ -26,6 +20,6 @@ if __name__ == '__main__':
         "http://olympus.realpython.org/dice",
     ] * 100
     start = time.time()
-    download_all_sites(sites)
+    asyncio.get_event_loop().run_until_complete(download_all_sites(sites))
     duration = time.time() - start
     print(f'downloaded {len(sites)} in {duration} secs')
