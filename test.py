@@ -1,26 +1,31 @@
 import pika
 import time
 
-def receive_msg():
+def receive_msg(exchange_type='fanout', exchange_name='test_exchange', binding_key=''):
     conn = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
     ch = conn.channel()
-    ch.queue_declare(queue='coffee_orders')
 
-    ch2 = conn.channel()
-    ch2.queue_declare(queue='tea_orders')
+    ch.exchange_declare(exchange=exchange_name, exchange_type=exchange_type)
 
-    def callback(ch, method, properties, body):
-        print(f' [x] received {body}')
+    result = ch.queue_declare(queue='', exclusive=True)
+    queue_name = result.method.queue
+
+    ch.queue_bind(exchange=exchange_name, queue=queue_name, routing_key=binding_key)
+
+    print(f'waiting for {exchange_name}, binding key: {binding_key}')
+
+    def clb(ch, method, properties, body):
+        print(f'received {body.decode()}')
         time.sleep(1)
-        print(' [x] done')
+        print('---done---')
         ch.basic_ack(delivery_tag=method.delivery_tag)
-
-    ch2.basic_qos(prefetch_count=1)
-    ch2.basic_consume(queue='tea_orders', on_message_callback=callback)
     
     ch.basic_qos(prefetch_count=1)
-    ch.basic_consume(queue='coffee_orders', on_message_callback=callback)
-    print(' [*] waiting for msg, to exit press ctrl+c')
+    ch.basic_consume(queue=queue_name, on_message_callback=clb)
     ch.start_consuming()
 
-receive_msg()
+# receive_msg(exchange_type='fanout', exchange_name='fanout_exchange')
+# receive_msg(exchange_type='direct', exchange_name='direct_exchange', binding_key='order.coffee')
+# receive_msg(exchange_type='direct', exchange_name='direct_exchange', binding_key='order.tea')
+
+receive_msg(exchange_type='topic', exchange_name='topic_exchange', binding_key='order.hot.coffe')

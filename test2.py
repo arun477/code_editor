@@ -1,24 +1,33 @@
 import pika
 
-def send_messages():
-    # Establish a connection to RabbitMQ
+def send_msg(exchange_type='fanout', exchange_name='test_exchange', routing_key=''):
     conn = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
-
-    # Create the first channel
-    ch1 = conn.channel()
-    ch1.queue_declare(queue='coffee_orders')
-    ch1.basic_publish(exchange='', routing_key='coffee_orders', body='coffe1')
-    ch1.basic_publish(exchange='', routing_key='coffee_orders', body='coffe2')
-
-    # Create the second channel
-    ch2 = conn.channel()
-    ch2.queue_declare(queue='tea_orders')
-    ch2.basic_publish(exchange='', routing_key='tea_orders', body='tea1')
-    ch2.basic_publish(exchange='', routing_key='tea_orders', body='tea2')
-
-    print(' [x] messages sent')
+    ch = conn.channel()
     
-    # Close the connection
+    ch.exchange_declare(exchange=exchange_name, exchange_type=exchange_type)
+    
+    msgs = [
+        'msg 1: cofee order',
+        'msg 2: tea order',
+        'msg 3: juice order',
+        'msg 4: smoothie order',
+    ]
+
+    for msg in msgs:
+        ch.basic_publish(
+            exchange=exchange_name,
+            routing_key=routing_key,
+            body=msg
+        )
+        print(f"sent '{msg}' with routing key: '{routing_key}'")
+
     conn.close()
 
-send_messages()
+# send_msg(exchange_type='fanout', exchange_name='fanout_exchange')
+
+# send_msg(exchange_type='direct', exchange_name='direct_exchange', routing_key='order.coffee')
+# send_msg(exchange_type='direct', exchange_name='direct_exchange', routing_key='order.tea')
+
+# send_msg(exchange_type='topic', exchange_name='topic_exchange', routing_key='order.hot.coffe')
+send_msg(exchange_type='topic', exchange_name='topic_exchange', routing_key='order.*')
+
