@@ -2,26 +2,42 @@ import redis
 import json
 import docker
 import time
+from queue import Queue
+from threading import Thread
 
 class CodeExecutionWorker:
-    def __init__(self, redis_host='localhost', redis_port=6379):
+    def __init__(self, redis_host='localhost', redis_port=6379, pool_size=5):
         self.redis_client = redis.Redis(host=redis_host, port=redis_port, db=0)
         self.docker_client = docker.from_env()
+        self.container_pool = Queue()
+        self.pool_size = pool_size
+        self._initialize_container_pool()
 
-    def run_code(self, code):
-        try:
+    def _initialize_container_pool(self):
+        for _ in range(self.pool_size):
             container = self.docker_client.containers.run(
                 "python:3.9-slim",
-                f"python -c \"{code}\"",
+                "tail -f /dev/null",  # Keep container running
                 detach=True,
                 mem_limit="250m",
                 cpu_quota=50000,
                 network_mode="none"
             )
-            output = container.logs().decode().strip()
-            exit_code = container.wait()['StatusCode']
-            container.remove()
+            self.container_pool.put(container)
 
+    def _get_container(self):
+        return self.container_pool.get()
+
+    def _return_container(self, container):
+        self.container_pool.put(container)
+
+    def run_code(self, code):
+        container = self._get_container()
+        try:
+            exec_result = container.exec_run(f"python -c \"{code}\"")
+            output = exec_result.output.decode().strip()
+            exit_code = exec_result.exit_code
+            
             return {
                 'output': output,
                 'exit_code': exit_code,
@@ -32,6 +48,8 @@ class CodeExecutionWorker:
                 'error': str(e),
                 'status': 'failed'
             }
+        finally:
+            self._return_container(container)
 
     def process_jobs(self):
         while True:
@@ -55,10 +73,19 @@ class CodeExecutionWorker:
                 print("No jobs in queue. Waiting...")
                 time.sleep(1)
 
+    def cleanup(self):
+        while not self.container_pool.empty():
+            container = self.container_pool.get()
+            container.stop()
+            container.remove()
+
 def main():
     worker = CodeExecutionWorker()
-    print("Worker started. Waiting for jobs...")
-    worker.process_jobs()
+    try:
+        print("Worker started. Waiting for jobs...")
+        worker.process_jobs()
+    finally:
+        worker.cleanup()
 
 if __name__ == "__main__":
     main()
