@@ -1,12 +1,9 @@
 from locust import HttpUser, task, between
+import time
 
 class QuickstartUser(HttpUser):
-    host = "http://localhost:8000"  # Replace with your application's base URL
-    # wait_time = between(1, 2)
-
-    # @task(1)
-    # def get_problem(self):
-    #     self.client.get("/get_problem/1894")
+    host = "http://localhost:8000"
+    wait_time = between(1, 5)
 
     @task(1)
     def run_code(self):
@@ -27,8 +24,21 @@ class QuickstartUser(HttpUser):
         merged.extend(word2[j:])
         
         return ''.join(merged)"""
-        self.client.post("/run_code", json={"problem_id": "1894", "code": code})
+        
+        response = self.client.post("/run_code", json={"problem_id": "1894", "code": code})
+        if response.status_code == 200:
+            job_id = response.json().get("job_id")
+            if job_id:
+                self.wait_for_completion(job_id)
 
-# if __name__ == "__main__":
-#     import os
-#     os.system("locust -f locustfile.py")
+    def wait_for_completion(self, job_id):
+        max_attempts = 25
+        delay = 0.3 # 1 second
+
+        for attempt in range(max_attempts):
+            response = self.client.post("/check/status", json={"job_id": job_id})
+            if response.status_code == 200:
+                status = response.json().get("status")
+                if status == "done":
+                    return
+            time.sleep(delay)
