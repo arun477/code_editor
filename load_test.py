@@ -32,8 +32,8 @@ class QuickstartUser(HttpUser):
                 self.wait_for_completion(job_id)
 
     def wait_for_completion(self, job_id):
-        max_attempts = 25
-        delay = 0.3 # 1 second
+        max_attempts = 10
+        delay = 1 # 1 second
 
         for attempt in range(max_attempts):
             response = self.client.post("/check/status", json={"job_id": job_id})
