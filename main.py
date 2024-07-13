@@ -12,12 +12,17 @@ import json
 import docker
 import logging
 import shutil
+import redis.connection
 import uvicorn
 import ast
+import redis
+import uuid
 
 DB_NAME = "problems_v9.db"
 PROBLEM_TABLE = "problems"
 SUBMISSION_TEST_CASE_TABLE = "submission_test_cases"
+
+redis_client = redis.Redis(host="localhost", port=6379, db=0)
 
 
 class DB:
@@ -430,6 +435,37 @@ def submit_in_docker(code, problem):
     }
 
 
+def get_job_status(job_id: str):
+    status_data = redis_client.get(f"jobs:{job_id}")
+    return status_data
+
+
+def set_job_status(job_id: str, status: str):
+    redis_client.set(
+        f"jobs:{job_id}", json.dumps({"status": "pending", "result": None})
+    )
+
+
+def create_job_id():
+    return f"job_{uuid.uuid4()}"
+
+
+def create_job(problem_id, code):
+    job_id = create_job_id()
+    run_code_input = {"problem_id": problem_id, "code": code}
+    redis_client.rpush(
+        "code_execution_queue",
+        json.dumps(
+            {
+                "run_code_input": run_code_input,
+                "job_id": job_id,
+            }
+        ),
+    )
+    set_job_status(job_id, status="pending")
+    return job_id
+
+
 class RunCodeInput(BaseModel):
     problem_id: str
     code: str
@@ -438,6 +474,21 @@ class RunCodeInput(BaseModel):
 class SubmissionCodeInput(BaseModel):
     problem_id: str
     code: str
+
+
+class CheckStatusInput(BaseModel):
+    job_id: str
+
+
+@app.post("/check/status")
+async def check_status(status_input: CheckStatusInput):
+    job_id = status_input.job_id
+    status_data = get_job_status(job_id) or {}
+    return {
+        "job_id": job_id,
+        "status": status_data.get("status"),
+        "result": status_data.get("result"),
+    }
 
 
 @app.post("/submit_code")
@@ -450,14 +501,24 @@ async def submit_code(submission_input: SubmissionCodeInput):
     return result or {}
 
 
+# @app.post("/run_code")
+# async def run_code(run_code_input: RunCodeInput):
+#     problem_id, code = run_code_input.problem_id, run_code_input.code
+#     problem = get_problem(problem_id)
+#     if not problem:
+#         raise HTTPException(status_code=404, detail="invalid problem id")
+#     result = run_in_docker(code, problem)
+#     return result or {}
+
+
 @app.post("/run_code")
 async def run_code(run_code_input: RunCodeInput):
     problem_id, code = run_code_input.problem_id, run_code_input.code
     problem = get_problem(problem_id)
     if not problem:
         raise HTTPException(status_code=404, detail="invalid problem id")
-    result = run_in_docker(code, problem)
-    return result or {}
+    job_id = create_job(problem_id, code)
+    return {"job_id": job_id, "status": "pending", "result": None}
 
 
 if __name__ == "__main__":
