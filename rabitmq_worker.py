@@ -15,6 +15,7 @@ import shutil
 import uvicorn
 import ast
 import redis
+import concurrent.futures
 
 DB_NAME = "problems_v9.db"
 PROBLEM_TABLE = "problems"
@@ -317,8 +318,34 @@ def set_job_status(job_id, job_status):
     redis_client.set(f"jobs:{job_id}", json.dumps(job_status))
 
 
+def process_job(job_data):
+    run_code_input = job_data["run_code_input"]
+    job_id = job_data["job_id"]
+    problem_id, code = run_code_input["problem_id"], run_code_input["code"]
+    problem = get_problem(problem_id)
+    set_job_status(job_id, {"status": "pending", "result": None})
+
+    if job_data['job_type'] == 'run':
+        result = run_in_docker(code, problem)
+    else:
+        result = submit_in_docker(code, problem)
+    
+    set_job_status(job_id, {"status": "done", "result": result})
+
+# def process_jobs():
+#     with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+#         while True:
+#             try:  
+#                 job = redis_client.blpop("code_execution_queue")
+#                 if job:
+#                     job_data = json.loads(job[1])
+#                     executor.submit(process_job, job_data)
+#             except Exception as e:
+#                 print(e)
+
+
 def process_jobs():
-    while True:
+    while True:   
         try:
             job = redis_client.blpop("code_execution_queue")
             if job:
