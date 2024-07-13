@@ -328,7 +328,11 @@ def process_jobs():
                 problem_id, code = run_code_input["problem_id"], run_code_input["code"]
                 problem = get_problem(problem_id)
                 set_job_status(job_id, {"status": "pending", "result": None})
-                result = run_in_docker(code, problem)
+
+                if job_data['job_type'] == 'run':
+                    result = run_in_docker(code, problem)
+                else:
+                    result = submit_in_docker(code, problem)
                 set_job_status(job_id, {"status": "done", "result": result})
         except Exception as e:
             print(e)

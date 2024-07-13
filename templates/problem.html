@@ -406,6 +406,21 @@
             });
         }
 
+
+        async function submitCodeInit(editor, problem_id) {
+            try {
+                const response = await fetch('/submit_code', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code: editor.getValue(), problem_id: problem_id }),
+                });
+                return await response.json()
+            } catch (error) {
+                console.error('Error:', error);
+                return 'failed'
+            }
+        }
+
         async function submitCode(editor) {
             if (window.codeRunning) {
                 return
@@ -420,46 +435,73 @@
 
 
             try {
-                const response = await fetch('/submit_code', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ code: editor.getValue(), problem_id: problem_id }),
-                });
-                window.codeRunning = false;
-                const data = await response.json();
-                console.log(data)
-                if (data.error) {
-                    testCasesContainer.innerHTML = `<div class="error">${data.error}</div>`;
+                const data = await submitCodeInit(editor, problem_id)
+                if (data == 'failed') {
+                    testCasesContainer.innerHTML = `<div class="error">Failed Try Again</div>`;
+                    window.codeRunning = false
                     return;
                 }
-
-                const parsedData = data.output;
-                testCasesContainer.innerHTML = '';
-                let passedTests = parsedData.passed;
-                let total = parsedData.total;
-
-                console.log('logs', data.logs)
-
-                if (data.logs) {
-                    console.log('logs', data.logs)
-                    const testCase = createTestCaseElement(data.logs, 1);
-                    testCasesContainer.appendChild(testCase);
+                // check status for atleast mins to get the results
+                const job_id = data['job_id']
+                const maxAttempts = 25;
+                const delay = 1000; // 1 second
+                for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+                    try {
+                        const response = await check_status(job_id)
+                        const status = response['status']
+                        if (status == 'done') {
+                            console.log("Job completed:", status);
+                            setSubmitResults(response['result'])
+                            window.codeRunning = false;
+                            return;
+                        } else {
+                            console.log(`Attempt ${attempt}: Job not completed yet.`);
+                        }
+                    } catch (error) {
+                        console.error("Error fetching job status:", error);
+                    }
+                    if (attempt < maxAttempts) {
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                    }
                 }
+                window.codeRunning = false;
+                testCasesContainer.innerHTML = `<div class="error">An error occurred while running the code.</div>`;
 
-                summaryText.textContent = `${passedTests}/${total} Passed`;
-                if (passedTests === total) {
-                    summaryText.style.color = 'var(--success-color)'
-                    summaryText.textContent = `All Passed!`;
-                } else {
-                    summaryText.style.color = 'var(--error-color)'
-
-                }
             } catch (error) {
                 window.codeRunning = false;
                 console.error('Error:', error);
                 testCasesContainer.innerHTML = `<div class="error">An error occurred while running the code.</div>`;
             }
         }
+
+
+        function setSubmitResults(data) {
+            const testCasesContainer = document.getElementById('test-cases');
+            const summaryText = document.getElementById('summary-text');
+            const parsedData = data.output;
+            testCasesContainer.innerHTML = '';
+            let passedTests = parsedData.passed;
+            let total = parsedData.total;
+
+            if (data.error) {
+                testCasesContainer.innerHTML = `<div class="error">${data.error}</div>`;
+                return;
+            }
+
+            if (data.logs) {
+                const testCase = createTestCaseElement(data.logs, 1);
+                testCasesContainer.appendChild(testCase);
+            }
+
+            summaryText.textContent = `${passedTests}/${total} Passed`;
+            if (passedTests === total) {
+                summaryText.style.color = 'var(--success-color)'
+                summaryText.textContent = `All Passed!`;
+            } else {
+                summaryText.style.color = 'var(--error-color)'
+            }
+        }
+
 
         async function check_status(job_id) {
             try {
@@ -497,8 +539,8 @@
             testCasesContainer.innerHTML = '';
 
             if (data.error) {
-                    testCasesContainer.innerHTML = `<div class="error">${data.error}</div>`;
-                    return;
+                testCasesContainer.innerHTML = `<div class="error">${data.error}</div>`;
+                return;
             }
 
             let passedTests = 0;

@@ -445,12 +445,11 @@ def set_job_status(job_id: str, status: str):
         f"jobs:{job_id}", json.dumps({"status": "pending", "result": None})
     )
 
-
 def create_job_id():
     return f"job_{uuid.uuid4()}"
 
 
-def create_job(problem_id, code):
+def create_job(problem_id, code, job_type):
     job_id = create_job_id()
     run_code_input = {"problem_id": problem_id, "code": code}
     redis_client.rpush(
@@ -459,6 +458,7 @@ def create_job(problem_id, code):
             {
                 "run_code_input": run_code_input,
                 "job_id": job_id,
+                'job_type': job_type
             }
         ),
     )
@@ -491,14 +491,24 @@ async def check_status(status_input: CheckStatusInput):
     }
 
 
+# @app.post("/submit_code")
+# async def submit_code(submission_input: SubmissionCodeInput):
+#     problem_id, code = submission_input.problem_id, submission_input.code
+#     problem = get_problem(problem_id)
+#     if not problem:
+#         raise HTTPException(status_code=404, detail="invalid problem id")
+#     result = submit_in_docker(code, problem)
+#     return result or {}
+
+
 @app.post("/submit_code")
 async def submit_code(submission_input: SubmissionCodeInput):
     problem_id, code = submission_input.problem_id, submission_input.code
     problem = get_problem(problem_id)
     if not problem:
         raise HTTPException(status_code=404, detail="invalid problem id")
-    result = submit_in_docker(code, problem)
-    return result or {}
+    job_id = create_job(problem_id, code, job_type='submit')
+    return {"job_id": job_id, "status": "pending", "result": None}
 
 
 # @app.post("/run_code")
@@ -517,7 +527,7 @@ async def run_code(run_code_input: RunCodeInput):
     problem = get_problem(problem_id)
     if not problem:
         raise HTTPException(status_code=404, detail="invalid problem id")
-    job_id = create_job(problem_id, code)
+    job_id = create_job(problem_id, code, job_type='run')
     return {"job_id": job_id, "status": "pending", "result": None}
 
 
