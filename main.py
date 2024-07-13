@@ -437,7 +437,7 @@ def submit_in_docker(code, problem):
 
 def get_job_status(job_id: str):
     status_data = redis_client.get(f"jobs:{job_id}")
-    return status_data
+    return json.loads(status_data)
 
 
 def set_job_status(job_id: str, status: str):

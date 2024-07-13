@@ -20,7 +20,8 @@ DB_NAME = "problems_v9.db"
 PROBLEM_TABLE = "problems"
 SUBMISSION_TEST_CASE_TABLE = "submission_test_cases"
 
-redis_client = redis.Redis(host='localhost', port=6379, db=0)
+redis_client = redis.Redis(host="localhost", port=6379, db=0)
+
 
 class DB:
     def __init__(self, cursor, conn):
@@ -38,6 +39,7 @@ def create_sql_connection():
     finally:
         if conn:
             conn.close()
+
 
 def get_problem(problem_id: str):
     with create_sql_connection() as _db:
@@ -312,22 +314,24 @@ def submit_in_docker(code, problem):
 
 
 def set_job_status(job_id, job_status):
-    redis_client.set(f"job:{job_id}", json.dumps(job_status))
+    redis_client.set(f"jobs:{job_id}", json.dumps(job_status))
+
 
 def process_jobs():
     while True:
         try:
-            job = redis_client.blpop('code_execution_queue')
+            job = redis_client.blpop("code_execution_queue")
             if job:
                 job_data = json.loads(job[1])
-                run_code_input = job_data['run_code_input']
-                job_id = job_data['job_id']
-                problem_id, code = run_code_input['problem_id'], run_code_input['code']
+                run_code_input = job_data["run_code_input"]
+                job_id = job_data["job_id"]
+                problem_id, code = run_code_input["problem_id"], run_code_input["code"]
                 problem = get_problem(problem_id)
-                set_job_status(job_id, {'status': 'pending', 'result': None})
+                set_job_status(job_id, {"status": "pending", "result": None})
                 result = run_in_docker(code, problem)
-                set_job_status(job_id, {'status': 'done', 'result': result})
+                set_job_status(job_id, {"status": "done", "result": result})
         except Exception as e:
             print(e)
+
 
 process_jobs()

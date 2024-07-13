@@ -461,6 +461,55 @@
             }
         }
 
+        async function check_status(job_id) {
+            try {
+                const response = await fetch('/check/status', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 'job_id': job_id }),
+                });
+                const data = await response.json();
+                return data
+
+            } catch (error) {
+                return 'failed'
+            }
+        }
+
+        async function runCodeInit(editor, problem_id) {
+            try {
+                const response = await fetch('/run_code', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code: editor.getValue(), problem_id: problem_id }),
+                });
+                return await response.json()
+            } catch (error) {
+                console.error('Error:', error);
+                return 'failed'
+            }
+        }
+
+        function setRunResults(data) {
+            const testCasesContainer = document.getElementById('test-cases');
+            const summaryText = document.getElementById('summary-text');
+            const parsedData = data.outputs.results;
+            testCasesContainer.innerHTML = '';
+
+            if (data.error) {
+                    testCasesContainer.innerHTML = `<div class="error">${data.error}</div>`;
+                    return;
+            }
+
+            let passedTests = 0;
+            parsedData.forEach((result, index) => {
+                if (result.valid) passedTests++;
+                const testCase = createTestCaseElement(result, index);
+                testCasesContainer.appendChild(testCase);
+            });
+            summaryText.textContent = `${passedTests}/${parsedData.length} Test Cases Passed`;
+        }
+
         async function runCode(editor) {
             if (window.codeRunning) {
                 return
@@ -472,34 +521,38 @@
             summaryText.textContent = "Test Results";
             document.getElementById('test-cases-container').style.display = "block"
 
-
             try {
-                const response = await fetch('/run_code', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ code: editor.getValue(), problem_id: problem_id }),
-                });
-                window.codeRunning = false;
-
-                const data = await response.json();
-
-                if (data.error) {
-                    testCasesContainer.innerHTML = `<div class="error">${data.error}</div>`;
-
+                const data = await runCodeInit(editor, problem_id)
+                if (data == 'failed') {
+                    testCasesContainer.innerHTML = `<div class="error">Failed Try Again</div>`;
+                    window.codeRunning = false
                     return;
                 }
-
-                const parsedData = data.outputs.results;
-                testCasesContainer.innerHTML = '';
-                let passedTests = 0;
-
-                parsedData.forEach((result, index) => {
-                    if (result.valid) passedTests++;
-                    const testCase = createTestCaseElement(result, index);
-                    testCasesContainer.appendChild(testCase);
-                });
-
-                summaryText.textContent = `${passedTests}/${parsedData.length} Test Cases Passed`;
+                // check status for atleast mins to get the results
+                const job_id = data['job_id']
+                const maxAttempts = 25;
+                const delay = 1000; // 1 second
+                for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+                    try {
+                        const response = await check_status(job_id)
+                        const status = response['status']
+                        if (status == 'done') {
+                            console.log("Job completed:", status);
+                            setRunResults(response['result'])
+                            window.codeRunning = false;
+                            return;
+                        } else {
+                            console.log(`Attempt ${attempt}: Job not completed yet.`);
+                        }
+                    } catch (error) {
+                        console.error("Error fetching job status:", error);
+                    }
+                    if (attempt < maxAttempts) {
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                    }
+                }
+                window.codeRunning = false;
+                testCasesContainer.innerHTML = `<div class="error">An error occurred while running the code.</div>`;
             } catch (error) {
                 window.codeRunning = false;
                 console.error('Error:', error);
