@@ -16,6 +16,7 @@ import uvicorn
 import ast
 import redis
 import concurrent.futures
+import time
 
 DB_NAME = "problems_v9.db"
 PROBLEM_TABLE = "problems"
@@ -332,37 +333,79 @@ def process_job(job_data):
     
     set_job_status(job_id, {"status": "done", "result": result})
 
-# def process_jobs():
-#     with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-#         while True:
-#             try:  
-#                 job = redis_client.blpop("code_execution_queue")
-#                 if job:
-#                     job_data = json.loads(job[1])
-#                     executor.submit(process_job, job_data)
-#             except Exception as e:
-#                 print(e)
+
+def execute_docker_job(job_data):
+    run_code_input = job_data["run_code_input"]
+    job_id = job_data["job_id"]
+    problem_id, code = run_code_input["problem_id"], run_code_input["code"]
+    problem = get_problem(problem_id)
+    set_job_status(job_id, {"status": "pending", "result": None})
+
+    if job_data['job_type'] == 'run':
+        result = run_in_docker(code, problem)
+    else:
+        result = submit_in_docker(code, problem)
+    
+    set_job_status(job_id, {"status": "done", "result": result})
 
 
+import psutil
 def process_jobs():
-    while True:   
-        try:
-            job = redis_client.blpop("code_execution_queue")
-            if job:
-                job_data = json.loads(job[1])
-                run_code_input = job_data["run_code_input"]
-                job_id = job_data["job_id"]
-                problem_id, code = run_code_input["problem_id"], run_code_input["code"]
-                problem = get_problem(problem_id)
-                set_job_status(job_id, {"status": "pending", "result": None})
+    redis_client = redis.Redis(host="localhost", port=6379, db=0)
 
-                if job_data['job_type'] == 'run':
-                    result = run_in_docker(code, problem)
-                else:
-                    result = submit_in_docker(code, problem)
-                set_job_status(job_id, {"status": "done", "result": result})
-        except Exception as e:
-            print(e)
+     # Determine the number of physical cores
+    physical_cores = psutil.cpu_count(logical=False)
+    
+    # Set max_workers to the number of physical cores
+    max_worker = physical_cores
+    
+    print(f"Using {max_worker} workers based on available physical cores")
+
+    # max_worker = 15
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_worker) as executor:
+        while True:
+            try:
+                # Fetch multiple jobs at once (up to 4)
+                pipe = redis_client.pipeline()
+                pipe.lrange("code_execution_queue", 0, max_worker-1)
+                pipe.ltrim("code_execution_queue", max_worker, -1)
+                results = pipe.execute()
+                jobs = results[0]
+
+                if not jobs:
+                    # If no jobs, wait for a short time before checking again
+                    time.sleep(0.1)
+                    continue
+
+                # Process the jobs concurrently
+                job_data_list = [json.loads(job) for job in jobs]
+                list(executor.map(execute_docker_job, job_data_list))
+
+            except Exception as e:
+                print(f"Error in process_jobs: {e}")
 
 
-process_jobs()
+# def process_jobs():
+#     while True:   
+#         try:
+#             job = redis_client.blpop("code_execution_queue")
+#             if job:
+#                 job_data = json.loads(job[1])
+#                 run_code_input = job_data["run_code_input"]
+#                 job_id = job_data["job_id"]
+#                 problem_id, code = run_code_input["problem_id"], run_code_input["code"]
+#                 problem = get_problem(problem_id)
+#                 set_job_status(job_id, {"status": "pending", "result": None})
+
+#                 if job_data['job_type'] == 'run':
+#                     result = run_in_docker(code, problem)
+#                 else:
+#                     result = submit_in_docker(code, problem)
+#                 set_job_status(job_id, {"status": "done", "result": result})
+#         except Exception as e:
+#             print(e)
+
+
+if __name__ == "__main__":
+    process_jobs()
