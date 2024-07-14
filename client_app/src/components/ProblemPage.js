@@ -1,88 +1,52 @@
-import React, { useRef, useEffect, useState } from 'react';
-import * as monaco from 'monaco-editor';
-import './problemPage.css';
+import React, { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
+import CodeEditor from './CodeEditor';
+import TestCases from './TestCases';
+import './problemPage.css'
 
-function CodeEditor({ initialCode, problemId }) {
-  const editorRef = useRef(null);
-  const [code, setCode] = useState(initialCode);
+function ProblemPage() {
+  const { id } = useParams();
+  const [problem, setProblem] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (editorRef.current) {
-      const editor = monaco.editor.create(editorRef.current, {
-        value: code,
-        language: 'python',
-        theme: 'vs-dark',
-        automaticLayout: true,
-        minimap: { enabled: false },
-        fontSize: 14,
-        tabSize: 4,
-        insertSpaces: true,
-        wordWrap: 'on'
-      });
-
-      editor.onDidChangeModelContent(() => {
-        setCode(editor.getValue());
-      });
-
-      return () => editor.dispose();
-    }
-  }, [initialCode]);
-
-  const runCode = () => {
-    fetch('http://localhost:8000/run_code', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code, problem_id: problemId }),
-    })
-      .then(response => response.json())
-      .then(data => {
-        console.log('Run results:', data);
-        // Handle the results, update TestCases component
+    fetch(`http://localhost:8000/get_problem/${id}`)
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        return response.json();
       })
-      .catch(error => console.error('Error running code:', error));
-  };
-
-  const submitCode = () => {
-    fetch('http://localhost:8000/submit_code', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code, problem_id: problemId }),
-    })
-      .then(response => response.json())
       .then(data => {
-        console.log('Submit results:', data);
-        // Handle the results, update TestCases component
+        setProblem(data);
+        setLoading(false);
       })
-      .catch(error => console.error('Error submitting code:', error));
-  };
+      .catch(error => {
+        console.error('Error fetching problem:', error);
+        setError(error.message);
+        setLoading(false);
+      });
+  }, [id]);
+
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error}</div>;
+  if (!problem) return <div>No problem found</div>;
 
   return (
     <div>
       <div id="parent">
         <div id="descriptions">
-          <h2 id="title"></h2>
-          <div id="content"></div>
+          <h2 id="title">{problem.title}</h2>
+          <div id="content" dangerouslySetInnerHTML={{ __html: problem.content }} ></div>
         </div>
 
         <div id="editor-container">
-          <div id="editor-sub">
-            {/* <div id="editor"></div> */}
-            <div id='editor' ref={editorRef} ></div>
-          </div>
+          <div>
 
-          <div id="output-container">
-            <div id="controls">
-              <button id="run-btn">Run <i class="fas fa-play icon"></i></button>
-              <button id="submit-btn">Submit</button>
-            </div>
+            <CodeEditor initialCode={problem.initial_code} problemId={id} />
+            <TestCases />
 
-            <div id="test-cases-container">
-              <div id="summary-bar">
-                <span id="summary-text">Test Results</span>
-                <button id="expand-all-btn">Expand All</button>
-              </div>
-              <div id="test-cases"></div>
-            </div>
           </div>
         </div>
       </div>
@@ -90,4 +54,4 @@ function CodeEditor({ initialCode, problemId }) {
   )
 }
 
-export default CodeEditor;
+export default ProblemPage;

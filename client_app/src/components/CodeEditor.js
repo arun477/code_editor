@@ -12,12 +12,16 @@ function CodeEditor({ initialCode, problemId }) {
         value: code,
         language: 'python',
         theme: 'vs-dark',
-        automaticLayout: true,
+        automaticLayout: false,
         minimap: { enabled: false },
         fontSize: 14,
         tabSize: 4,
         insertSpaces: true,
-        wordWrap: 'on'
+        wordWrap: 'on',
+        layout: {
+          width: '100%',
+          height: '100%'
+        },
       });
 
       editor.onDidChangeModelContent(() => {
@@ -57,13 +61,18 @@ function CodeEditor({ initialCode, problemId }) {
   };
 
   return (
-    <div className="code-editor">
-      <div ref={editorRef} style={{ height: '400px' }}></div>
-      <div className="controls">
-        <button onClick={runCode}>Run <i className="fas fa-play icon"></i></button>
-        <button onClick={submitCode}>Submit</button>
+    <div>
+      <div id="editor-sub">
+        <div ref={editorRef} style={{ height: '400px' }}></div>
+      </div>
+      <div>
+        <div id="controls">
+          <button id="run-btn">Run <i class="fas fa-play icon"></i></button>
+          <button id="submit-btn">Submit</button>
+        </div>
       </div>
     </div>
+
   );
 }
 

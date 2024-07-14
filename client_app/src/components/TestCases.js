@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
+import './problemPage.css';
 
 function TestCases({ testCases }) {
+  testCases = testCases || [];
   const [expandedCases, setExpandedCases] = useState([]);
 
   const toggleTestCase = (index) => {
@@ -16,6 +18,16 @@ function TestCases({ testCases }) {
       prev.length === testCases.length ? [] : testCases.map((_, i) => i)
     );
   };
+
+  return (
+    <div id="test-cases-container">
+    <div id="summary-bar">
+      <span id="summary-text">Test Results</span>
+      <button id="expand-all-btn">Expand All</button>
+    </div>
+    <div id="test-cases"></div>
+  </div>
+  )
 
   return (
     <div className="test-cases">
