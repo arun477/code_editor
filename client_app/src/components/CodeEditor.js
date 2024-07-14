@@ -1,6 +1,8 @@
 import React, { useRef, useEffect, useState } from 'react';
 import * as monaco from 'monaco-editor';
 import './problemPage.css';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faStar, faPlay } from '@fortawesome/free-solid-svg-icons';
 
 function CodeEditor({ initialCode, problemId, onTestResultsUpdate }) {
   const editorRef = useRef(null);
@@ -133,7 +135,7 @@ function CodeEditor({ initialCode, problemId, onTestResultsUpdate }) {
       <div>
         <div id="controls">
           <button id="run-btn" onClick={() => runOrSubmitCode('run_code')} disabled={isRunning}>
-            Run <i className="fas fa-play icon"></i>
+            Run  <FontAwesomeIcon icon={faPlay} style={{color:'black'}}/>
           </button>
           <button id="submit-btn" onClick={() => runOrSubmitCode('submit_code')} disabled={isRunning}>
             Submit

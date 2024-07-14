@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './problemPage.css';
+import Loader from './Loader';
 
 function TestCases({ testResults }) {
   const [expandedCases, setExpandedCases] = useState([]);
@@ -36,10 +37,14 @@ function TestCases({ testResults }) {
     return (
       <div id="test-cases-container">
         <div id="summary-bar">
-          <span id="summary-text">Running...</span>
+          <span id="summary-text">
+            <div style={{display:'flex'}}>
+            <Loader width="40px" height='40px' />
+            <div style={{marginLeft: '10px', padding:'10px'}}>Running...</div>
+            </div>
+            </span>
         </div>
         <div id="test-cases">
-          <div style={{padding: '10px'}}>Running...</div>
         </div>
       </div>
     );

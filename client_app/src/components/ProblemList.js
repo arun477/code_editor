@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faStar } from '@fortawesome/free-solid-svg-icons';
 import Styles from './problemList.module.css'
+import Loader from './Loader';
 
 function ProblemList() {
   const [problems, setProblems] = useState([]);
@@ -28,7 +29,7 @@ function ProblemList() {
       });
   }, []);
 
-  if (loading) return <div>Loading...</div>;
+  if (loading) return <div><Loader /></div>;
   if (error) return <div>Error: {error}</div>;
 
   return (

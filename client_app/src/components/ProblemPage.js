@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import CodeEditor from './CodeEditor';
 import TestCases from './TestCases';
 import './problemPage.css'
+import Loader from './Loader';
 
 function ProblemPage() {
   const { id } = useParams();
@@ -30,7 +31,9 @@ function ProblemPage() {
       });
   }, [id]);
 
-  if (loading) return <div>Loading...</div>;
+  if (loading) return <div>
+    <Loader />
+  </div>;
   if (error) return <div>Error: {error}</div>;
   if (!problem) return <div>No problem found</div>;
 
