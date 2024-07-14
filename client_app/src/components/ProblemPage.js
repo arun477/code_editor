@@ -9,6 +9,7 @@ function ProblemPage() {
   const [problem, setProblem] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [testResults, setTestResults] = useState(null);
 
   useEffect(() => {
     fetch(`http://localhost:8000/get_problem/${id}`)
@@ -43,10 +44,12 @@ function ProblemPage() {
 
         <div id="editor-container">
           <div>
-
-            <CodeEditor initialCode={problem.initial_code} problemId={id} />
-            <TestCases />
-
+            <CodeEditor 
+              initialCode={problem.initial_code} 
+              problemId={id} 
+              onTestResultsUpdate={setTestResults} 
+            />
+            <TestCases testResults={testResults} />
           </div>
         </div>
       </div>
