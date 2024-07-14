@@ -38,3 +38,8 @@
 .parent {
     padding: 20px;
 }
+
+.icon {
+    color: lightgray;
+    margin-right: 10px;
+}

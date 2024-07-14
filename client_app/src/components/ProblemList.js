@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faStar } from '@fortawesome/free-solid-svg-icons';
 import Styles from './problemList.module.css'
 
 function ProblemList() {
@@ -37,6 +39,7 @@ function ProblemList() {
           <li className={Styles.listItem} key={problem.questionId}>
             <Link className={Styles.link} to={`/problem/${problem.questionId}`}>
               <i className="fas fa-star icon"></i>
+              <FontAwesomeIcon icon={faStar} className={Styles.icon} />
               {problem.title}
             </Link>
           </li>
