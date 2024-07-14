@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import * as monaco from 'monaco-editor';
+import './problemPage.css';
 
 function CodeEditor({ initialCode, problemId }) {
   const editorRef = useRef(null);
@@ -33,12 +34,12 @@ function CodeEditor({ initialCode, problemId }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ code, problem_id: problemId }),
     })
-    .then(response => response.json())
-    .then(data => {
-      console.log('Run results:', data);
-      // Handle the results, update TestCases component
-    })
-    .catch(error => console.error('Error running code:', error));
+      .then(response => response.json())
+      .then(data => {
+        console.log('Run results:', data);
+        // Handle the results, update TestCases component
+      })
+      .catch(error => console.error('Error running code:', error));
   };
 
   const submitCode = () => {
@@ -47,12 +48,12 @@ function CodeEditor({ initialCode, problemId }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ code, problem_id: problemId }),
     })
-    .then(response => response.json())
-    .then(data => {
-      console.log('Submit results:', data);
-      // Handle the results, update TestCases component
-    })
-    .catch(error => console.error('Error submitting code:', error));
+      .then(response => response.json())
+      .then(data => {
+        console.log('Submit results:', data);
+        // Handle the results, update TestCases component
+      })
+      .catch(error => console.error('Error submitting code:', error));
   };
 
   return (

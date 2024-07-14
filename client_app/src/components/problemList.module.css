@@ -1,0 +1,40 @@
+.heading {
+    margin: 0px;
+    border: 1px solid var(--border-color);
+    padding: 15px;
+    background-color: var(--border-color);
+}
+
+.list {
+    list-style-type: none;
+    padding: 0;
+    border: 1px solid var(--border-color);
+    margin: 0px;
+}
+
+.list:last-child {
+    border-bottom: none;
+}
+
+.listItem {
+    border-bottom: 1px solid var(--border-color);
+}
+
+.link {
+    color: black;
+    text-decoration: none;
+    transition: background-color 0.3s;
+    padding: 15px;
+    display: flex;
+    align-items: center;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.link:hover {
+    background-color: #f5f7fa;
+}
+
+.parent {
+    padding: 20px;
+}

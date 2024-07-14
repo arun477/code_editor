@@ -17,6 +17,7 @@ import uvicorn
 import ast
 import redis
 import uuid
+from fastapi.middleware.cors import CORSMiddleware
 
 DB_NAME = "problems_v9.db"
 PROBLEM_TABLE = "problems"
@@ -90,6 +91,16 @@ app = FastAPI()
 templates = Jinja2Templates(directory="templates")
 app.mount("/assets", StaticFiles(directory="assets"), name="assets")
 docker_client = docker.from_env()
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],  # Replace with your React app's URL
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 # logging.basicConfig(level=logging.DEBUG)
 # logger = logging.getLogger(__name__)

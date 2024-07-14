@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import Styles from './problemList.module.css'
 
 function ProblemList() {
   const [problems, setProblems] = useState([]);
@@ -29,12 +30,12 @@ function ProblemList() {
   if (error) return <div>Error: {error}</div>;
 
   return (
-    <div>
-      <h3>Common Algorithmic Problems</h3>
-      <ul>
+    <div className={Styles.parent}>
+      <h3 className={Styles.heading}>Common Algorithmic Problems</h3>
+      <ul className={Styles.list}>
         {problems.map(problem => (
-          <li key={problem.questionId}>
-            <Link to={`/problem/${problem.questionId}`}>
+          <li className={Styles.listItem} key={problem.questionId}>
+            <Link className={Styles.link} to={`/problem/${problem.questionId}`}>
               <i className="fas fa-star icon"></i>
               {problem.title}
             </Link>

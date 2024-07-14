@@ -3,6 +3,7 @@
 __pycache__/
 *.so
 *.json
+node_modules
 
 # C extensions
 *.c

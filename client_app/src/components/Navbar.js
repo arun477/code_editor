@@ -1,11 +1,12 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import Styles from  './navbar.module.css';
 
 function Navbar() {
   return (
-    <nav>
-      <Link to="/">
-        <img src="/assets/logo.png" alt="Logo" style={{ width: '40px', height: '40px' }} />
+    <nav className={Styles.navbar}>
+      <Link className={Styles.link}  to="/">
+        <img className={Styles.logo} src="/assets/logo.png" alt="Logo" />
       </Link>
     </nav>
   );
