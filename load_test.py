@@ -3,7 +3,7 @@ import time
 
 class QuickstartUser(HttpUser):
     host = "http://localhost:8000"
-    wait_time = between(1, 5)
+    wait_time = between(1, 30)
 
     @task(1)
     def run_code(self):
@@ -31,14 +31,18 @@ class QuickstartUser(HttpUser):
             if job_id:
                 self.wait_for_completion(job_id)
 
+
     def wait_for_completion(self, job_id):
         max_attempts = 10
-        delay = 1 # 1 second
-
+        delay = 1
         for attempt in range(max_attempts):
             response = self.client.post("/check/status", json={"job_id": job_id})
             if response.status_code == 200:
                 status = response.json().get("status")
                 if status == "done":
                     return
+                elif status == "error":
+                    # Handle error case
+                    break
+            delay *= 1.5  # Exponential backoff
             time.sleep(delay)
