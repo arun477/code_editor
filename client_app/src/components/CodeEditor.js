@@ -70,7 +70,8 @@ function CodeEditor({ initialCode, problemId, onTestResultsUpdate }) {
 
   const checkJobStatus = async (jobId, endpoint) => {
     const maxAttempts = 25;
-    const delay = 1000; // 1 second
+    const initialDelay = 1000; // 1 second
+    const maxDelay = 32000; // 32 seconds, adjust as needed
 
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
@@ -108,7 +109,12 @@ function CodeEditor({ initialCode, problemId, onTestResultsUpdate }) {
         }
 
         if (attempt < maxAttempts) {
-          await new Promise(resolve => setTimeout(resolve, delay));
+          // Calculate the delay with exponential backoff
+          const delay = Math.min(initialDelay * Math.pow(2, attempt - 1), maxDelay);
+          
+          // Add a small random factor to prevent synchronized requests
+          const jitter = Math.random() * 1000;
+          await new Promise(resolve => setTimeout(resolve, delay + jitter));
         }
       } catch (error) {
         console.error("Error fetching job status:", error);
