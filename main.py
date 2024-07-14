@@ -502,14 +502,19 @@ async def check_status(status_input: CheckStatusInput):
     }
 
 
-# @app.post("/submit_code")
-# async def submit_code(submission_input: SubmissionCodeInput):
-#     problem_id, code = submission_input.problem_id, submission_input.code
-#     problem = get_problem(problem_id)
-#     if not problem:
-#         raise HTTPException(status_code=404, detail="invalid problem id")
-#     result = submit_in_docker(code, problem)
-#     return result or {}
+@app.get('/collections')
+async def get_collections():
+    banner_img = 'assets/banner_power_algo.jpeg'
+    banner_title = "Power Algos"
+    banner_description = 'Master Essential Algo Problems'
+    return [
+            {'banner_img': 'assets/banner_basic_algos.jpeg', "banner_title": 'Basic Algos',  'banner_description': 'Beginner Friendly Basic Algos'},
+            {'banner_img': 'assets/banner_basic_ml.jpeg', "banner_title": 'Basic ML',  'banner_description': 'Beginner Friendly Machine Learning Algos'},
+            {'banner_img': 'assets/banner_basic_dl.jpeg', "banner_title": 'Basic DL',  'banner_description': 'Beginner Friendly Deep Learning Techniques'},
+        
+        {'banner_img': banner_img, "banner_title": banner_title,  'banner_description': banner_description},
+            {'banner_img': 'assets/banner_power_ml.jpeg', "banner_title": 'Power ML',  'banner_description': 'Master Essential Machine Learning Algos'},
+            {'banner_img': 'assets/banner_power_dl.jpeg', "banner_title": 'Power DL',  'banner_description': 'Master Essential Deep Learning Techniques'},]
 
 
 @app.post("/submit_code")
@@ -520,16 +525,6 @@ async def submit_code(submission_input: SubmissionCodeInput):
         raise HTTPException(status_code=404, detail="invalid problem id")
     job_id = create_job(problem_id, code, job_type='submit')
     return {"job_id": job_id, "status": "pending", "result": None}
-
-
-# @app.post("/run_code")
-# async def run_code(run_code_input: RunCodeInput):
-#     problem_id, code = run_code_input.problem_id, run_code_input.code
-#     problem = get_problem(problem_id)
-#     if not problem:
-#         raise HTTPException(status_code=404, detail="invalid problem id")
-#     result = run_in_docker(code, problem)
-#     return result or {}
 
 
 @app.post("/run_code")

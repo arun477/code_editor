@@ -34,7 +34,7 @@ function ProblemList() {
 
   return (
     <div className={Styles.parent}>
-      <h3 className={Styles.heading}>Common Algorithmic Problems</h3>
+      <h3 className={Styles.heading}>Power Algos</h3>
       <ul className={Styles.list}>
         {problems.map(problem => (
           <li className={Styles.listItem} key={problem.questionId}>
