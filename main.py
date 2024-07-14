@@ -509,12 +509,12 @@ async def get_collections():
     banner_description = 'Master Essential Algo Problems'
     return [
             {'banner_img': 'assets/banner_basic_algos.jpeg', "banner_title": 'Basic Algos',  'banner_description': 'Beginner Friendly Basic Algos'},
-            {'banner_img': 'assets/banner_basic_ml.jpeg', "banner_title": 'Basic ML',  'banner_description': 'Beginner Friendly Machine Learning Algos'},
-            {'banner_img': 'assets/banner_basic_dl.jpeg', "banner_title": 'Basic DL',  'banner_description': 'Beginner Friendly Deep Learning Techniques'},
+            {'banner_img': 'assets/banner_basic_ml.jpeg', "banner_title": 'Basic ML',  'banner_description': 'Beginner Friendly Machine Learning Algos', "isLocked":True},
+            {'banner_img': 'assets/banner_basic_dl.jpeg', "banner_title": 'Basic DL',  'banner_description': 'Beginner Friendly Deep Learning Techniques', "isLocked":True},
         
-        {'banner_img': banner_img, "banner_title": banner_title,  'banner_description': banner_description},
-            {'banner_img': 'assets/banner_power_ml.jpeg', "banner_title": 'Power ML',  'banner_description': 'Master Essential Machine Learning Algos'},
-            {'banner_img': 'assets/banner_power_dl.jpeg', "banner_title": 'Power DL',  'banner_description': 'Master Essential Deep Learning Techniques'},]
+        {'banner_img': banner_img, "banner_title": banner_title,  'banner_description': banner_description, "isLocked":True},
+            {'banner_img': 'assets/banner_power_ml.jpeg', "banner_title": 'Power ML',  'banner_description': 'Master Essential Machine Learning Algos', "isLocked":True},
+            {'banner_img': 'assets/banner_power_dl.jpeg', "banner_title": 'Power DL',  'banner_description': 'Master Essential Deep Learning Techniques', "isLocked":True},]
 
 
 @app.post("/submit_code")

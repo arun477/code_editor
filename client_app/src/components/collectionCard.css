@@ -6,6 +6,7 @@
     border: 1px solid #ddd;
     border-radius: 10px;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    position: relative;
   }
   
   .banner-img {
@@ -33,15 +34,19 @@
     text-align: center;
   }
   
-  .banner-btn {
-    background-color: var(--primary-color);
-    color: white;
-    border: none;
-    padding: 5px 10px;
-    border-radius: 3px;
-    cursor: pointer;
-  }
-  
   .banner-btn:hover {
     background-color:var(--primary-color);
   }
+
+  .banner-lock-icon-parent {
+    position: absolute;
+    right: 20px;
+    top: 20px;
+    background: white;
+    padding: 5px;
+    border-radius: 100%;
+    width: 20px;
+    height: 20px;
+    text-align: center;
+}
+  
