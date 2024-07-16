@@ -77,7 +77,7 @@ function ProblemPage() {
       <div id="parent">
         <div id="descriptions">
           <ProblemTab handleChange={handleChange} activeLang={activeLang} problemId={id} />
-          {contentLoading ? <div>
+          {!contentLoading ? <div>
             <h2 id="title">{problem.title}</h2>
             <div id="content" dangerouslySetInnerHTML={{ __html: content }} style={{ fontSize: '14px' }}></div>
           </div> : <Loader />}
