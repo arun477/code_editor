@@ -17,6 +17,7 @@ import ast
 import redis
 import concurrent.futures
 import time
+import psutil
 
 DB_NAME = "problems_v9.db"
 PROBLEM_TABLE = "problems"
@@ -326,11 +327,11 @@ def process_job(job_data):
     problem = get_problem(problem_id)
     set_job_status(job_id, {"status": "pending", "result": None})
 
-    if job_data['job_type'] == 'run':
+    if job_data["job_type"] == "run":
         result = run_in_docker(code, problem)
     else:
         result = submit_in_docker(code, problem)
-    
+
     set_job_status(job_id, {"status": "done", "result": result})
 
 
@@ -341,24 +342,23 @@ def execute_docker_job(job_data):
     problem = get_problem(problem_id)
     set_job_status(job_id, {"status": "pending", "result": None})
 
-    if job_data['job_type'] == 'run':
+    if job_data["job_type"] == "run":
         result = run_in_docker(code, problem)
     else:
         result = submit_in_docker(code, problem)
-    
+
     set_job_status(job_id, {"status": "done", "result": result})
 
 
-import psutil
 def process_jobs():
     redis_client = redis.Redis(host="localhost", port=6379, db=0)
 
-     # Determine the number of physical cores
+    # Determine the number of physical cores
     physical_cores = psutil.cpu_count(logical=False)
-    
+
     # Set max_workers to the number of physical cores
     max_worker = physical_cores
-    
+
     print(f"Using {max_worker} workers based on available physical cores")
 
     # max_worker = 15
@@ -368,7 +368,7 @@ def process_jobs():
             try:
                 # Fetch multiple jobs at once (up to 4)
                 pipe = redis_client.pipeline()
-                pipe.lrange("code_execution_queue", 0, max_worker-1)
+                pipe.lrange("code_execution_queue", 0, max_worker - 1)
                 pipe.ltrim("code_execution_queue", max_worker, -1)
                 results = pipe.execute()
                 jobs = results[0]

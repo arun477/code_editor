@@ -456,6 +456,7 @@ def set_job_status(job_id: str, status: str):
         f"jobs:{job_id}", json.dumps({"status": "pending", "result": None})
     )
 
+
 def create_job_id():
     return f"job_{uuid.uuid4()}"
 
@@ -466,11 +467,7 @@ def create_job(problem_id, code, job_type):
     redis_client.rpush(
         "code_execution_queue",
         json.dumps(
-            {
-                "run_code_input": run_code_input,
-                "job_id": job_id,
-                'job_type': job_type
-            }
+            {"run_code_input": run_code_input, "job_id": job_id, "job_type": job_type}
         ),
     )
     set_job_status(job_id, status="pending")
@@ -502,19 +499,48 @@ async def check_status(status_input: CheckStatusInput):
     }
 
 
-@app.get('/collections')
+@app.get("/collections")
 async def get_collections():
-    banner_img = 'assets/banner_power_algo.jpeg'
+    banner_img = "assets/banner_power_algo.jpeg"
     banner_title = "Power Algos"
-    banner_description = 'Master Essential Algo Problems'
+    banner_description = "Master Essential Algo Problems"
     return [
-            {'banner_img': 'assets/banner_basic_algos.jpeg', "banner_title": 'Basic Algos',  'banner_description': 'Beginner Friendly Basic Algos'},
-            {'banner_img': 'assets/banner_basic_ml.jpeg', "banner_title": 'Basic ML',  'banner_description': 'Beginner Friendly Machine Learning Algos', "isLocked":True},
-            {'banner_img': 'assets/banner_basic_dl.jpeg', "banner_title": 'Basic DL',  'banner_description': 'Beginner Friendly Deep Learning Techniques', "isLocked":True},
-        
-        {'banner_img': banner_img, "banner_title": banner_title,  'banner_description': banner_description, "isLocked":True},
-            {'banner_img': 'assets/banner_power_ml.jpeg', "banner_title": 'Power ML',  'banner_description': 'Master Essential Machine Learning Algos', "isLocked":True},
-            {'banner_img': 'assets/banner_power_dl.jpeg', "banner_title": 'Power DL',  'banner_description': 'Master Essential Deep Learning Techniques', "isLocked":True},]
+        {
+            "banner_img": "assets/banner_basic_algos.jpeg",
+            "banner_title": "Basic Algos",
+            "banner_description": "Beginner Friendly Basic Algos",
+        },
+        {
+            "banner_img": "assets/banner_basic_ml.jpeg",
+            "banner_title": "Basic ML",
+            "banner_description": "Beginner Friendly Machine Learning Algos",
+            "isLocked": True,
+        },
+        {
+            "banner_img": "assets/banner_basic_dl.jpeg",
+            "banner_title": "Basic DL",
+            "banner_description": "Beginner Friendly Deep Learning Techniques",
+            "isLocked": True,
+        },
+        {
+            "banner_img": banner_img,
+            "banner_title": banner_title,
+            "banner_description": banner_description,
+            "isLocked": True,
+        },
+        {
+            "banner_img": "assets/banner_power_ml.jpeg",
+            "banner_title": "Power ML",
+            "banner_description": "Master Essential Machine Learning Algos",
+            "isLocked": True,
+        },
+        {
+            "banner_img": "assets/banner_power_dl.jpeg",
+            "banner_title": "Power DL",
+            "banner_description": "Master Essential Deep Learning Techniques",
+            "isLocked": True,
+        },
+    ]
 
 
 @app.post("/submit_code")
@@ -523,7 +549,7 @@ async def submit_code(submission_input: SubmissionCodeInput):
     problem = get_problem(problem_id)
     if not problem:
         raise HTTPException(status_code=404, detail="invalid problem id")
-    job_id = create_job(problem_id, code, job_type='submit')
+    job_id = create_job(problem_id, code, job_type="submit")
     return {"job_id": job_id, "status": "pending", "result": None}
 
 
@@ -533,7 +559,7 @@ async def run_code(run_code_input: RunCodeInput):
     problem = get_problem(problem_id)
     if not problem:
         raise HTTPException(status_code=404, detail="invalid problem id")
-    job_id = create_job(problem_id, code, job_type='run')
+    job_id = create_job(problem_id, code, job_type="run")
     return {"job_id": job_id, "status": "pending", "result": None}
 
 
