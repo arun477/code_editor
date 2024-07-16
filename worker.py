@@ -91,19 +91,6 @@ app = FastAPI()
 templates = Jinja2Templates(directory="templates")
 docker_client = docker.from_env()
 
-# logging.basicConfig(level=logging.DEBUG)
-# logger = logging.getLogger(__name__)
-
-
-@app.get("/", response_class=HTMLResponse)
-async def root(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
-
-
-@app.get("/problem_page/{problem_id}", response_class=HTMLResponse)
-async def problem_page(request: Request):
-    return templates.TemplateResponse("problem.html", {"request": request})
-
 
 def create_runnable_scripts(code, problem):
     exec_script = templates.get_template("execution_script.jinja2").render(
