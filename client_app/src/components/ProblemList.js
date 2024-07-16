@@ -66,9 +66,9 @@ function ProblemList() {
         <div>
           <img
             style={{
-              width: "40px",
-              height: "40px",
-              borderRadius: "10px",
+              width: "98px",
+              height: "57px",
+              borderRadius: "7px",
             }}
             src={'http://localhost:8000/' + meta?.banner_img} alt={meta?.banner_title} className="banner-img" />
         </div>
