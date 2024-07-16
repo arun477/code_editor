@@ -1,7 +1,27 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 
-const ProblemTab = ({ handleChange, activeLang }) => {
-    const options = ['en', 'ta', 'hi'];
+const ProblemTab = ({ handleChange, activeLang, problemId }) => {
+    const [options, setOptions] = useState([])
+
+    async function getLangOptions() {
+        try {
+            const response = await fetch(`http://localhost:8000/available_langs/${problemId}`, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' },
+            });
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            let data = await response.json();
+            setOptions(data || [])
+
+        } catch (err) {
+            console.log(err);
+        }
+    }
+    useEffect(() => {
+        getLangOptions()
+    }, [])
 
     const containerStyle = {
         display: 'flex',
@@ -44,27 +64,18 @@ const ProblemTab = ({ handleChange, activeLang }) => {
         zIndex: 0,
     };
 
-    const getLanguageName = (lang) => {
-        switch (lang) {
-            case 'en': return 'English';
-            case 'ta': return 'தமிழ்';
-            case 'hi': return 'हिन्दी';
-            default: return lang;
-        }
-    };
-
     return (
         <div style={containerStyle}>
             <div style={innerContainerStyle}>
                 {options.map((lang) => (
                     <button
-                        key={lang}
-                        style={buttonStyle(activeLang === lang)}
-                        onClick={() => handleChange(lang)}
+                        key={lang?.lang}
+                        style={buttonStyle(activeLang === lang?.lang)}
+                        onClick={() => handleChange(lang?.lang)}
                     >
-                        {activeLang === lang && <div style={activeButtonStyle} />}
+                        {activeLang === lang?.lang && <div style={activeButtonStyle} />}
                         <span style={{ position: 'relative', zIndex: 1 }}>
-                            {getLanguageName(lang)}
+                            {lang?.label}
                         </span>
                     </button>
                 ))}

@@ -81,7 +81,7 @@ def get_module(id: str):
 def get_problem_lang_options(problem_id: str):
     with create_sql_connection() as _db:
         return _db.cursor.execute(
-            f"SELECT lang FROM {LANG_TABLE} WHERE questionId = ?", (problem_id,)
+            f"SELECT lang, label FROM {LANG_TABLE} WHERE questionId = ?", (problem_id,)
         ).fetchall()
 
 

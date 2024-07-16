@@ -9,13 +9,41 @@ import ProblemTab from './ProblemTab';
 function ProblemPage() {
   const { id } = useParams();
   const [problem, setProblem] = useState(null);
+  const [content, setContent] = useState('');
   const [loading, setLoading] = useState(true);
+  const [contentLoading, setContentLoading] = useState(false);
   const [error, setError] = useState(null);
   const [testResults, setTestResults] = useState(null);
   const [activeLang, setActiveLang] = useState('en');
+
+  async function getLangSpecificDescription(lang) {
+    setContentLoading(true);
+    try {
+      const response = await fetch(`http://localhost:8000/available_langs/${lang}/${id}`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      let data = await response.json();
+      setContent(data?.content || '')
+
+    } catch (err) {
+      console.log(err);
+    }
+    setContentLoading(false);
+  }
+
   const handleChange = (newLang) => {
+    if (newLang === activeLang) {
+      return
+    }
     setActiveLang(newLang);
-};
+    getLangSpecificDescription(newLang);
+  };
+
+
 
   useEffect(() => {
     fetch(`http://localhost:8000/get_problem/${id}`)
@@ -27,6 +55,7 @@ function ProblemPage() {
       })
       .then(data => {
         setProblem(data);
+        setContent(data?.content)
         setLoading(false);
       })
       .catch(error => {
@@ -42,30 +71,25 @@ function ProblemPage() {
   if (error) return <div>Error: {error}</div>;
   if (!problem) return <div>No problem found</div>;
 
-  let content = ''
-  if(activeLang==='en'){
-    content = problem?.content
-  } else if (activeLang==='ta'){
-    content = problem?.content_ta
-  }else if (activeLang==='hi'){
-    content = problem?.content_hi
-  }
 
   return (
     <div>
       <div id="parent">
         <div id="descriptions">
-          <ProblemTab handleChange={handleChange} activeLang={activeLang}/>
-          <h2 id="title">{problem.title}</h2>
-          <div id="content" dangerouslySetInnerHTML={{ __html: content }} style={{fontSize:'14px'}}></div>
+          <ProblemTab handleChange={handleChange} activeLang={activeLang} problemId={id} />
+          {contentLoading ? <div>
+            <h2 id="title">{problem.title}</h2>
+            <div id="content" dangerouslySetInnerHTML={{ __html: content }} style={{ fontSize: '14px' }}></div>
+          </div> : <Loader />}
+
         </div>
 
         <div id="editor-container">
           <div>
-            <CodeEditor 
-              initialCode={problem.initial_code} 
-              problemId={id} 
-              onTestResultsUpdate={setTestResults} 
+            <CodeEditor
+              initialCode={problem.initial_code}
+              problemId={id}
+              onTestResultsUpdate={setTestResults}
             />
             <TestCases testResults={testResults} />
           </div>
