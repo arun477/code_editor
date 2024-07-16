@@ -23,6 +23,7 @@ DB_NAME = "problems_v9.db"
 PROBLEM_TABLE = "problems"
 MODULES_TABLE = "modules"
 SUBMISSION_TEST_CASE_TABLE = "submission_test_cases"
+LANG_TABLE = "langs"
 
 redis_client = redis.Redis(host="localhost", port=6379, db=0)
 
@@ -74,6 +75,21 @@ def get_module(id: str):
     with create_sql_connection() as _db:
         return _db.cursor.execute(
             f"SELECT * FROM {MODULES_TABLE} WHERE id = ?", (id,)
+        ).fetchone()
+
+
+def get_problem_lang_options(problem_id: str):
+    with create_sql_connection() as _db:
+        return _db.cursor.execute(
+            f"SELECT lang FROM {LANG_TABLE} WHERE questionId = ?", (problem_id,)
+        ).fetchall()
+
+
+def get_problem_lang_meta(lang: str, problem_id: str):
+    with create_sql_connection() as _db:
+        return _db.cursor.execute(
+            f"SELECT * FROM {LANG_TABLE} WHERE questionId = ? AND lang = ?",
+            (problem_id, lang),
         ).fetchone()
 
 
@@ -289,6 +305,7 @@ class SubmissionCodeInput(BaseModel):
 class CheckStatusInput(BaseModel):
     job_id: str
 
+
 class GetModuleInput(BaseModel):
     module_id: str
 
@@ -308,10 +325,22 @@ async def check_status(status_input: CheckStatusInput):
 async def get_modules_route():
     return get_modules() or []
 
+
+@app.get("/available_langs/{problem_id}")
+def get_problem_lang_options_route(problem_id: str):
+    return get_problem_lang_options(problem_id) or []
+
+
+@app.get("/available_langs/{lang}/{problem_id}")
+def get_problem_lang_meta_route(lang: str, problem_id: str):
+    return get_problem_lang_meta(lang, problem_id) or {}
+
+
 @app.post("/get-module")
-async def get_module_route(input:GetModuleInput):
+async def get_module_route(input: GetModuleInput):
     module_id = input.module_id
     return get_module(module_id)
+
 
 @app.post("/submit_code")
 async def submit_code(submission_input: SubmissionCodeInput):
