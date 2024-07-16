@@ -88,7 +88,7 @@
 }
 
 .test-case {
-    border: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
     overflow: hidden;
 }
 
@@ -146,6 +146,14 @@ h2 {
     margin-right: 20px;
 }
 
+#test-cases-container-running {
+    border-radius: 5px;
+    overflow: hidden;
+    margin-left: 20px;
+    margin-right: 20px;
+    border: 1px solid var(--border-color);
+}
+
 #submit-cases-container {
     margin-top: 20px;
     border: 1px solid var(--border-color);
@@ -157,7 +165,6 @@ h2 {
 .test-case-summary {
     display: flex;
     padding: 10px;
-    border-bottom: 1px solid var(--border-color);
     cursor: pointer;
     position: relative;
 }

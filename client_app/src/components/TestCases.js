@@ -35,8 +35,8 @@ function TestCases({ testResults }) {
 
   if (testResults.loading) {
     return (
-      <div id="test-cases-container">
-        <div id="summary-bar">
+      <div id="test-cases-container-running">
+        <div style={{padding: '10px'}}>
           <span id="summary-text">
             <div style={{display:'flex'}}>
             <Loader width="40px" height='40px' />
@@ -68,7 +68,7 @@ function TestCases({ testResults }) {
     const allPassed = testResults.passed === testResults.total;
     return (
       <div id="test-cases-container">
-        <div id="summary-bar">
+        <div style={{padding: '10px'}}>
           <span id="summary-text" style={{ color: allPassed ? 'var(--success-color)' : 'var(--error-color)' }}>
             {allPassed ? 'All Passed!' : `${testResults.passed}/${testResults.total} Passed`}
           </span>
