@@ -1,8 +1,10 @@
 .heading {
     margin: 0px;
     border: 1px solid var(--border-color);
-    padding: 15px;
+    padding: 10px;
     background-color: var(--border-color);
+    display: flex;
+    align-items: center;
 }
 
 .list {

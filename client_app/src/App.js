@@ -13,7 +13,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Collections />} />
         <Route path="/admin/edit-problem/:id" element={<EditProblem />} />
-        <Route path="/problems" element={<ProblemList />} />
+        <Route path="/module/:id" element={<ProblemList />} />
         <Route path="/problem/:id" element={<ProblemPage />} />
       </Routes>
     </div>

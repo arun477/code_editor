@@ -21,6 +21,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 DB_NAME = "problems_v9.db"
 PROBLEM_TABLE = "problems"
+MODULES_TABLE = "modules"
 SUBMISSION_TEST_CASE_TABLE = "submission_test_cases"
 
 redis_client = redis.Redis(host="localhost", port=6379, db=0)
@@ -62,6 +63,18 @@ def get_submission_test_cases(problem_id: str):
             f"SELECT * FROM {SUBMISSION_TEST_CASE_TABLE} WHERE questionId = ?",
             (problem_id,),
         ).fetchall()
+
+
+def get_modules():
+    with create_sql_connection() as _db:
+        return _db.cursor.execute(f"SELECT * FROM {MODULES_TABLE}").fetchall()
+
+
+def get_module(id: str):
+    with create_sql_connection() as _db:
+        return _db.cursor.execute(
+            f"SELECT * FROM {MODULES_TABLE} WHERE id = ?", (id,)
+        ).fetchone()
 
 
 def admin_update_problem(problem_id: str, problem_update):
@@ -276,6 +289,9 @@ class SubmissionCodeInput(BaseModel):
 class CheckStatusInput(BaseModel):
     job_id: str
 
+class GetModuleInput(BaseModel):
+    module_id: str
+
 
 @app.post("/check/status")
 async def check_status(status_input: CheckStatusInput):
@@ -288,49 +304,14 @@ async def check_status(status_input: CheckStatusInput):
     }
 
 
-@app.get("/collections")
-async def get_collections():
-    banner_img = "assets/banner_power_algo.jpeg"
-    banner_title = "Power Algos"
-    banner_description = "Master Essential Algo Problems"
-    return [
-        {
-            "banner_img": "assets/banner_basic_algos.jpeg",
-            "banner_title": "Basic Algos",
-            "banner_description": "Beginner Friendly Basic Algos",
-        },
-        {
-            "banner_img": "assets/banner_basic_ml.jpeg",
-            "banner_title": "Basic ML",
-            "banner_description": "Beginner Friendly Machine Learning Algos",
-            "isLocked": True,
-        },
-        {
-            "banner_img": "assets/banner_basic_dl.jpeg",
-            "banner_title": "Basic DL",
-            "banner_description": "Beginner Friendly Deep Learning Techniques",
-            "isLocked": True,
-        },
-        {
-            "banner_img": banner_img,
-            "banner_title": banner_title,
-            "banner_description": banner_description,
-            "isLocked": True,
-        },
-        {
-            "banner_img": "assets/banner_power_ml.jpeg",
-            "banner_title": "Power ML",
-            "banner_description": "Master Essential Machine Learning Algos",
-            "isLocked": True,
-        },
-        {
-            "banner_img": "assets/banner_power_dl.jpeg",
-            "banner_title": "Power DL",
-            "banner_description": "Master Essential Deep Learning Techniques",
-            "isLocked": True,
-        },
-    ]
+@app.get("/modules")
+async def get_modules_route():
+    return get_modules() or []
 
+@app.post("/get-module")
+async def get_module_route(input:GetModuleInput):
+    module_id = input.module_id
+    return get_module(module_id)
 
 @app.post("/submit_code")
 async def submit_code(submission_input: SubmissionCodeInput):

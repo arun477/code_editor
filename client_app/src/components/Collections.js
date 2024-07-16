@@ -12,7 +12,7 @@ function Collections() {
     const [error, setError] = useState(null);
 
     useEffect(() => {
-        fetch('http://localhost:8000/collections')
+        fetch('http://localhost:8000/modules')
             .then(response => {
                 if (!response.ok) {
                     throw new Error('Network response was not ok');
@@ -40,7 +40,7 @@ function Collections() {
             <ul className={Styles.list} style={{display:'flex', flexWrap:'wrap', justifyContent:'center'}}>
                 {collections.map(collection => (
                     <li className={Styles.listItem} key={collection.collectionId} style={{ width: '300px', margin: '10px' }}>
-                        <Link className={Styles.link} to={!collection.isLocked?`/problems`:'/#'} style={{cursor: !collection.isLocked?'pointer':'not-allowed'}}>
+                        <Link className={Styles.link} to={!collection.isLocked?`/module/${collection.id}`:'/#'} style={{cursor: !collection.isLocked?'pointer':'not-allowed'}}>
                             <CollectionCard
                                 title={collection.banner_title}
                                 bannerImg={'http://localhost:8000/' + collection.banner_img}
