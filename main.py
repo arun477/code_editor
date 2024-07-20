@@ -34,6 +34,20 @@ class DB:
         self.conn = conn
 
 
+class User(BaseModel):
+    email: str
+    is_active: bool = True
+
+
+class UserInDB(User):
+    hashed_password: str
+
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+
 @contextmanager
 def create_sql_connection():
     conn = None
