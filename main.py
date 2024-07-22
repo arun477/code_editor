@@ -5,7 +5,7 @@ from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 from fastapi.requests import Request
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, EmailStr
 import tempfile
 import os
 import json
@@ -18,24 +18,44 @@ import ast
 import redis
 import uuid
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+import bcrypt
+from datetime import timedelta, datetime
+from jose import jwt, JWTError
 
+# sqllitedb 
 DB_NAME = "problems_v9.db"
 PROBLEM_TABLE = "problems"
 MODULES_TABLE = "modules"
 SUBMISSION_TEST_CASE_TABLE = "submission_test_cases"
 LANG_TABLE = "langs"
 
+# message queue
 redis_client = redis.Redis(host="localhost", port=6379, db=0)
 
 
+# jwt token config
+SECRECT_KEY = 'test-key'
+HASH_ALGO = 'HS256'
+ACCESS_TOKEN_EXPIRE_MINS = 10
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl='token')
+
+# email config
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USERNAME = 'coolarun477@gmail.com'
+EMAIL_PASS = 'temp-password'
+
+
+# main connection
 class DB:
     def __init__(self, cursor, conn):
         self.cursor = cursor
         self.conn = conn
 
-
+# user relevant dbs
 class User(BaseModel):
-    email: str
+    email: EmailStr
     is_active: bool = True
 
 
@@ -48,6 +68,8 @@ class Token(BaseModel):
     token_type: str
 
 
+
+# sqlitedb connection
 @contextmanager
 def create_sql_connection():
     conn = None
@@ -59,7 +81,46 @@ def create_sql_connection():
         if conn:
             conn.close()
 
+# auths
+def verify_password(plain_password, hashed_password):
+    return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password)
 
+def get_password_hash(password):
+    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+
+def get_user(email: str):
+    with create_sql_connection() as _db:
+        user = _db.cursor.execute(
+            "SELECT * FROM users WHERE email = ?", (email, )
+        )
+        if user:
+            return UserInDB(**dict(user))
+
+def authenticate_user(email: str, password: str):
+    user = get_user(email)
+    if not user:
+        return False
+    if not verify_password(password, user.hashed_password):
+        return False
+    return user
+
+
+def create_access_token(data: dict, expires_delta: timedelta | None = None):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.now(datetime.UTC)
+    else:
+        expire = datetime.now(datetime.UTC) + timedelta(minutes=15)
+    to_encode.update('exp', expire)
+    encoded_jwt = jwt.encode(to_encode, SECRECT_KEY, algorithm=HASH_ALGO)
+    return encoded_jwt
+
+
+async def get_current_user(token):
+    pass
+
+
+# problems
 def get_problem(problem_id: str):
     with create_sql_connection() as _db:
         return _db.cursor.execute(
