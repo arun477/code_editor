@@ -55,7 +55,7 @@ class DB:
 
 # user relevant dbs
 class User(BaseModel):
-    email: EmailStr
+    email: str
     is_active: bool = True
 
 
@@ -105,7 +105,7 @@ def authenticate_user(email: str, password: str):
     return user
 
 
-def create_access_token(data: dict, expires_delta: timedelta | None = None):
+def create_access_token(data: dict, expires_delta = None):
     to_encode = data.copy()
     if expires_delta:
         expire = datetime.now(datetime.UTC)
@@ -224,6 +224,29 @@ app.add_middleware(
 
 # logging.basicConfig(level=logging.DEBUG)
 # logger = logging.getLogger(__name__)
+
+
+# auth routes
+class UserCreate(BaseModel):
+    email: EmailStr
+    password: str
+
+def add_new_user(user, hashed_password):
+    with create_sql_connection() as _db:
+        _db.cursor.execute(
+            "INSERT INTO users(email, hashed_password, is_active) VALUES(?, ?, ?)",
+            (user.email, hashed_password, True)
+        )
+        _db.conn.commit()
+
+@app.post('/register', status_code=status.HTTP_201_CREATED)
+async def register(user: UserCreate):
+    if get_user(user.email):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='email already exists try login')
+    hashed_password = get_password_hash(user.password)
+    add_new_user(user, hashed_password)
+    return { 'msg': 'account created'}
+
 
 
 @app.get("/", response_class=HTMLResponse)
