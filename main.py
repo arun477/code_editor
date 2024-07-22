@@ -1,6 +1,6 @@
 import sqlite3
 from contextlib import contextmanager
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends, status
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
@@ -116,8 +116,24 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     return encoded_jwt
 
 
-async def get_current_user(token):
-    pass
+async def get_current_user(token: str = Depends(oauth2_scheme)):
+    cred_exp = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="invalid credentials",
+        headers={'WWW-Authenticate': 'Bearer'}
+    )
+    try:
+        payload = jwt.decode(token, SECRECT_KEY, algorithms=[HASH_ALGO])
+        email: str = payload.get('sub')
+        if email is None:
+            raise cred_exp
+    except JWTError:
+        raise cred_exp
+    user = get_user(email)
+    if user is None:
+        raise cred_exp
+    return user
+
 
 
 # problems
