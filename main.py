@@ -247,6 +247,20 @@ async def register(user: UserCreate):
     add_new_user(user, hashed_password)
     return { 'msg': 'account created'}
 
+@app.post('/login')
+async def login(form_data: OAuth2PasswordRequestForm = Depends()):
+    user = authenticate_user(form_data.email, form_data.password)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail='invalid credentials',
+            headers={'WwW-Authenticate': 'Bearer'}
+        )
+    if not user.is_active:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='email not verified')
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINS)
+    access_token = create_access_token(data={'sub': user.email}, expires_delta=access_token_expires)
+    return {'access_token': access_token, 'token_type': 'bearer'}
 
 
 @app.get("/", response_class=HTMLResponse)
