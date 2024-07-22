@@ -20,31 +20,32 @@ import uuid
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 import bcrypt
-from datetime import timedelta, datetime
+from datetime import timedelta, datetime, timezone
 from jose import jwt, JWTError
 
-# sqllitedb 
+# sqllitedb
 DB_NAME = "problems_v9.db"
 PROBLEM_TABLE = "problems"
 MODULES_TABLE = "modules"
 SUBMISSION_TEST_CASE_TABLE = "submission_test_cases"
 LANG_TABLE = "langs"
+USERS_TABLE = 'users'
 
 # message queue
 redis_client = redis.Redis(host="localhost", port=6379, db=0)
 
 
 # jwt token config
-SECRECT_KEY = 'test-key'
-HASH_ALGO = 'HS256'
+SECRECT_KEY = "test-key"
+HASH_ALGO = "HS256"
 ACCESS_TOKEN_EXPIRE_MINS = 10
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl='token')
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 # email config
-EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_HOST = "smtp.gmail.com"
 EMAIL_PORT = 587
-EMAIL_USERNAME = 'coolarun477@gmail.com'
-EMAIL_PASS = 'temp-password'
+EMAIL_USERNAME = "coolarun477@gmail.com"
+EMAIL_PASS = "temp-password"
 
 
 # main connection
@@ -52,6 +53,7 @@ class DB:
     def __init__(self, cursor, conn):
         self.cursor = cursor
         self.conn = conn
+
 
 # user relevant dbs
 class User(BaseModel):
@@ -68,7 +70,6 @@ class Token(BaseModel):
     token_type: str
 
 
-
 # sqlitedb connection
 @contextmanager
 def create_sql_connection():
@@ -81,37 +82,41 @@ def create_sql_connection():
         if conn:
             conn.close()
 
+
 # auths
 def verify_password(plain_password, hashed_password):
-    return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password)
+    return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password)
+
 
 def get_password_hash(password):
-    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
+
 
 def get_user(email: str):
     with create_sql_connection() as _db:
-        user = _db.cursor.execute(
-            "SELECT * FROM users WHERE email = ?", (email, )
-        )
+        user = _db.cursor.execute(f"SELECT * FROM {USERS_TABLE} WHERE email = ?", (email,)).fetchone()
         if user:
-            return UserInDB(**dict(user))
+            return dict(user)
+
 
 def authenticate_user(email: str, password: str):
+    print('email', email, 'password', password)
     user = get_user(email)
+    print('user', user)
     if not user:
         return False
-    if not verify_password(password, user.hashed_password):
+    if not verify_password(password, user['hashed_password']):
         return False
     return user
 
 
-def create_access_token(data: dict, expires_delta = None):
+def create_access_token(data: dict, expires_delta=None):
     to_encode = data.copy()
     if expires_delta:
-        expire = datetime.now(datetime.UTC)
+        expire = datetime.now(timezone.utc)
     else:
-        expire = datetime.now(datetime.UTC) + timedelta(minutes=15)
-    to_encode.update('exp', expire)
+        expire = datetime.now(timezone.utc) + timedelta(minutes=15)
+    to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRECT_KEY, algorithm=HASH_ALGO)
     return encoded_jwt
 
@@ -120,11 +125,11 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
     cred_exp = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="invalid credentials",
-        headers={'WWW-Authenticate': 'Bearer'}
+        headers={"WWW-Authenticate": "Bearer"},
     )
     try:
         payload = jwt.decode(token, SECRECT_KEY, algorithms=[HASH_ALGO])
-        email: str = payload.get('sub')
+        email: str = payload.get("sub")
         if email is None:
             raise cred_exp
     except JWTError:
@@ -133,7 +138,6 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
     if user is None:
         raise cred_exp
     return user
-
 
 
 # problems
@@ -231,41 +235,77 @@ class UserCreate(BaseModel):
     email: EmailStr
     password: str
 
+
 def add_new_user(user, hashed_password):
     with create_sql_connection() as _db:
         _db.cursor.execute(
             "INSERT INTO users(email, hashed_password, is_active) VALUES(?, ?, ?)",
-            (user.email, hashed_password, True)
+            (user.email, hashed_password, True),
         )
         _db.conn.commit()
 
-@app.post('/register', status_code=status.HTTP_201_CREATED)
+
+@app.post("/register", status_code=status.HTTP_201_CREATED)
 async def register(user: UserCreate):
+    user.email = user.email.lower()
     if get_user(user.email):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='email already exists try login')
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="email already exists try login",
+        )
     hashed_password = get_password_hash(user.password)
     add_new_user(user, hashed_password)
-    return { 'msg': 'account created'}
+    return {"msg": "account created"}
 
-@app.post('/login')
-async def login(form_data: OAuth2PasswordRequestForm = Depends()):
-    user = authenticate_user(form_data.email, form_data.password)
+
+# @app.post("/login")
+# async def login(form_data: OAuth2PasswordRequestForm = Depends()):
+#     user = authenticate_user(form_data.email, form_data.password)
+#     if not user:
+#         raise HTTPException(
+#             status_code=status.HTTP_401_UNAUTHORIZED,
+#             detail="invalid credentials",
+#             headers={"WwW-Authenticate": "Bearer"},
+#         )
+#     if not user.is_active:
+#         raise HTTPException(
+#             status_code=status.HTTP_400_BAD_REQUEST, detail="email not verified"
+#         )
+#     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINS)
+#     access_token = create_access_token(
+#         data={"sub": user.email}, expires_delta=access_token_expires
+#     )
+#     return {"access_token": access_token, "token_type": "bearer"}
+
+class LoginData(BaseModel):
+    email: str
+    password: str
+
+@app.post("/login")
+async def login(login_data: LoginData):
+    login_data.email = login_data.email.lower()
+    user = authenticate_user(login_data.email, login_data.password)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail='invalid credentials',
-            headers={'WwW-Authenticate': 'Bearer'}
+            detail="Invalid credentials",
+            headers={"WWW-Authenticate": "Bearer"},
         )
-    if not user.is_active:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='email not verified')
+    if not user['is_active']:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Email not verified"
+        )
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINS)
-    access_token = create_access_token(data={'sub': user.email}, expires_delta=access_token_expires)
-    return {'access_token': access_token, 'token_type': 'bearer'}
+    access_token = create_access_token(
+        data={"sub": user['email']}, expires_delta=access_token_expires
+    )
+    return {"access_token": access_token, "token_type": "bearer"}
 
 
-@app.get('/users/me')
+@app.get("/users/me")
 async def read_users_me(current_user: User = Depends(get_current_user)):
     return current_user
+
 
 # coding env routes
 @app.get("/", response_class=HTMLResponse)
