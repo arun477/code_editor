@@ -263,6 +263,11 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     return {'access_token': access_token, 'token_type': 'bearer'}
 
 
+@app.get('/users/me')
+async def read_users_me(current_user: User = Depends(get_current_user)):
+    return current_user
+
+# coding env routes
 @app.get("/", response_class=HTMLResponse)
 async def root(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
