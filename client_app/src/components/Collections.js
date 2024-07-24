@@ -26,7 +26,7 @@ function Collections() {
         };
 
         fetchCollections();
-    }, [callApi]);
+    }, []);
 
     if (loading)
         return (
