@@ -4,9 +4,12 @@
     border-bottom: 1px solid lightgray;
     padding-left: 10px;
     padding-right: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
-.link {
+.logoutBtn {
     text-decoration: none;
     font-size: 18px;
     display: inline-block;
@@ -15,4 +18,24 @@
 .logo {
     width: 50px;
     height: 50px;
+}
+
+.logoutBtn {
+    cursor: pointer;
+    background-color: lightgray;
+    color: black;
+    border: none;
+    border-radius: 3px;
+    transition: background-color 0.3s;
+    padding: 10px 15px;
+    font-size: 13px;
+    height: 35px;
+}
+
+.logoutBtn:hover {
+    background-color: #e0e0e0;
+}
+
+.logoutBtn:focus {
+    outline: none;
 }

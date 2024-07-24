@@ -29,7 +29,7 @@ PROBLEM_TABLE = "problems"
 MODULES_TABLE = "modules"
 SUBMISSION_TEST_CASE_TABLE = "submission_test_cases"
 LANG_TABLE = "langs"
-USERS_TABLE = 'users'
+USERS_TABLE = "users"
 
 # message queue
 redis_client = redis.Redis(host="localhost", port=6379, db=0)
@@ -94,18 +94,20 @@ def get_password_hash(password):
 
 def get_user(email: str):
     with create_sql_connection() as _db:
-        user = _db.cursor.execute(f"SELECT * FROM {USERS_TABLE} WHERE email = ?", (email,)).fetchone()
+        user = _db.cursor.execute(
+            f"SELECT * FROM {USERS_TABLE} WHERE email = ?", (email,)
+        ).fetchone()
         if user:
             return dict(user)
 
 
 def authenticate_user(email: str, password: str):
-    print('email', email, 'password', password)
+    print("email", email, "password", password)
     user = get_user(email)
-    print('user', user)
+    print("user", user)
     if not user:
         return False
-    if not verify_password(password, user['hashed_password']):
+    if not verify_password(password, user["hashed_password"]):
         return False
     return user
 
@@ -258,28 +260,10 @@ async def register(user: UserCreate):
     return {"msg": "account created"}
 
 
-# @app.post("/login")
-# async def login(form_data: OAuth2PasswordRequestForm = Depends()):
-#     user = authenticate_user(form_data.email, form_data.password)
-#     if not user:
-#         raise HTTPException(
-#             status_code=status.HTTP_401_UNAUTHORIZED,
-#             detail="invalid credentials",
-#             headers={"WwW-Authenticate": "Bearer"},
-#         )
-#     if not user.is_active:
-#         raise HTTPException(
-#             status_code=status.HTTP_400_BAD_REQUEST, detail="email not verified"
-#         )
-#     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINS)
-#     access_token = create_access_token(
-#         data={"sub": user.email}, expires_delta=access_token_expires
-#     )
-#     return {"access_token": access_token, "token_type": "bearer"}
-
 class LoginData(BaseModel):
     email: str
     password: str
+
 
 @app.post("/login")
 async def login(login_data: LoginData):
@@ -291,13 +275,13 @@ async def login(login_data: LoginData):
             detail="Invalid credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    if not user['is_active']:
+    if not user["is_active"]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Email not verified"
         )
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINS)
     access_token = create_access_token(
-        data={"sub": user['email']}, expires_delta=access_token_expires
+        data={"sub": user["email"]}, expires_delta=access_token_expires
     )
     return {"access_token": access_token, "token_type": "bearer"}
 

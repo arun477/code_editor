@@ -6,6 +6,8 @@
   --border-color: #e0e4e9;
   --success-color: #2ecc71;
   --error-color: #e74c3c;
+  --primary-color-light: lightgray;
+  --primary-color-dark: #1a0036;
 }
 
 body {

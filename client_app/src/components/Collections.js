@@ -1,34 +1,32 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faStar } from '@fortawesome/free-solid-svg-icons';
 import Styles from './problemList.module.css';
 import Loader from './Loader';
 import CollectionCard from './CollectionCard';
+import { useApi } from '../utils/api';
+import { API_BASE_URL } from '../constants';
 
 function Collections() {
     const [collections, setCollections] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const { callApi } = useApi();
 
     useEffect(() => {
-        fetch('http://localhost:8000/modules')
-            .then((response) => {
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
-                }
-                return response.json();
-            })
-            .then((data) => {
+        const fetchCollections = async () => {
+            try {
+                const data = await callApi('/modules');
                 setCollections(data || []);
                 setLoading(false);
-            })
-            .catch((error) => {
-                console.error('Error fetching problems:', error);
+            } catch (error) {
+                console.error('Error fetching collections:', error);
                 setError(error.message);
                 setLoading(false);
-            });
-    }, []);
+            }
+        };
+
+        fetchCollections();
+    }, [callApi]);
 
     if (loading)
         return (
@@ -58,7 +56,7 @@ function Collections() {
                         >
                             <CollectionCard
                                 title={collection.banner_title}
-                                bannerImg={'http://localhost:8000/' + collection.banner_img}
+                                bannerImg={`${API_BASE_URL}/${collection.banner_img}`}
                                 description={collection.banner_description}
                                 isLocked={collection.isLocked}
                             />

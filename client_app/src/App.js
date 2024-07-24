@@ -5,7 +5,8 @@ import ProblemList from './components/ProblemList';
 import ProblemPage from './components/ProblemPage';
 import Collections from './components/Collections';
 import EditProblem from './components/admin/EditProblem';
-import { Login, Register } from './components/Auth';
+import Login from './components/Login';
+import Register from './components/Register';
 import { AuthProvider, ProtectedRoute } from './contexts/AuthContext';
 
 function App() {
