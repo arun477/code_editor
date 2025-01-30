@@ -44,7 +44,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 # email config
 EMAIL_HOST = "smtp.gmail.com"
 EMAIL_PORT = 587
-EMAIL_USERNAME = "coolarun477@gmail.com"
+EMAIL_USERNAME = ""
 EMAIL_PASS = "temp-password"
 
 
